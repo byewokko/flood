@@ -1,42 +1,10 @@
-import typing
 import ruamel.yaml
 import numpy as np
 import pygame as pg
 
 from OpenGL.GL import *
-from OpenGL.GLU import *
 
-
-class Grid:
-    def __init__(self):
-        self.size = (20, 20)
-        self.grid = np.random.random(self.size)
-
-    def update(self):
-        smooth = 3
-        self.grid = (smooth*self.grid + np.random.random(self.size)) / (smooth+1)
-
-    def draw(self):
-        xspace = 8
-        yspace = 8
-        width = 1
-        height = 1
-        color = np.array((0.5, 0, 0.2))
-        glPolygonMode(GL_FRONT, GL_FILL)
-        for (i, j), value in np.ndenumerate(self.grid):
-            glPushMatrix()
-            glScale(xspace, yspace, 1)
-            glTranslate(i, j, 0)
-            glColor3f(*(color*value))
-
-            glBegin(GL_QUADS)
-            glVertex2fv((0, 0))
-            glVertex2fv((height, 0))
-            glVertex2fv((height, width))
-            glVertex2fv((0, width))
-
-            glEnd()
-            glPopMatrix()
+from .objects.flashgrid import Grid
 
 
 class Game:
@@ -46,6 +14,8 @@ class Game:
         self.display_size = np.array((self.Config["display"]["width"], self.Config["display"]["height"]))
         self.field_size = np.array((self.Config["field"]["width"], self.Config["field"]["height"]))
         self.frame_rate = self.Config["frame rate"]
+        self.display_compensation = (1, 1, 1)
+        self.running = False
 
         self.Clock = pg.time.Clock()
         self.all_sprites = pg.sprite.Group()
@@ -60,6 +30,11 @@ class Game:
     def initialize_pygame(self):
         pg.init()
         pg.display.set_mode(self.display_size, pg.DOUBLEBUF | pg.OPENGL)
+        print(self.display_size)
+        if self.display_size[1] > self.display_size[0]:
+            self.display_compensation = (self.display_size[1]/self.display_size[0], 1, 1)
+        elif self.display_size[1] < self.display_size[0]:
+            self.display_compensation = (1, self.display_size[0]/self.display_size[1], 1)
 
     def initialize_objects(self):
         self.grid = Grid()
@@ -68,35 +43,42 @@ class Game:
         """
         Execute the game loop
         """
-        while True:
+        self.running = True
+        while self.running:
             t = pg.time.get_ticks() / 1000
-            # get input
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    return
-                if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                    return
 
-            # update all the sprites
-            # self.all_sprites.update()
-            self.grid.update()
+            self.get_inputs(t)
 
-            # draw the scene
-            # self.Screen.fill(pg.Color(63, 0, 31))
-            # dirty = self.all_sprites.draw(self.Screen)
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-            glPushMatrix()
+            self.update(t)
 
-            # Compensate display ratio
-            glScale(self.display_size[1]/self.display_size[0], 1, 1)
-            # Scale to fit the whole field
-            glScale(*(1/self.field_size), 1)
-            glRotate(5*t % 360, 0, 0, 1)
-            glTranslate(-100, -100, 0)
-            self.grid.draw()
-            glPopMatrix()
-            pg.display.flip()
-            # pg.display.update(dirty)
+            self.draw(t)
 
-            # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
             self.Clock.tick(self.frame_rate)
+
+    def get_inputs(self, t):
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                self.running = False
+                return
+            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+                self.running = False
+                return
+
+    def update(self, t):
+        self.grid.update()
+
+    def draw(self, t):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glPushMatrix()
+
+        # Scale to fit the whole field
+        glScale(*(1 / self.field_size), 1)
+        # Translate so that 0, 0 is bottom left
+        glTranslate(*(-self.field_size), 0)
+        # Compensate display ratio distortion
+        glScale(*self.display_compensation)
+
+        self.grid.draw()
+
+        glPopMatrix()
+        pg.display.flip()
