@@ -1,0 +1,7 @@
+display:
+  width: 800
+  height: 640
+field:
+  width: 100
+  height: 100
+frame rate: 40

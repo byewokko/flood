@@ -9,30 +9,44 @@ from OpenGL.GLU import *
 
 class Grid:
     def __init__(self):
-        self.grid = np.random.random((1, 1))
+        self.size = (20, 20)
+        self.grid = np.random.random(self.size)
+
+    def update(self):
+        smooth = 3
+        self.grid = (smooth*self.grid + np.random.random(self.size)) / (smooth+1)
 
     def draw(self):
-        yspace = 32
-        xspace = 32
-        height = 0.8
-        width = 0.8
+        xspace = 8
+        yspace = 8
+        width = 1
+        height = 1
+        color = np.array((0.5, 0, 0.2))
         glPolygonMode(GL_FRONT, GL_FILL)
-        glColor3f(0.12, 0, 0.06)
-        glBegin(GL_QUADS)
         for (i, j), value in np.ndenumerate(self.grid):
-            glVertex2fv((i*yspace, j*xspace))
-            glVertex2fv(((i+height)*yspace, j*xspace))
-            glVertex2fv(((i+height)*yspace, (j+width)*xspace))
-            glVertex2fv((i*yspace, (j+width)*xspace))
-        glEnd()
+            glPushMatrix()
+            glScale(xspace, yspace, 1)
+            glTranslate(i, j, 0)
+            glColor3f(*(color*value))
+
+            glBegin(GL_QUADS)
+            glVertex2fv((0, 0))
+            glVertex2fv((height, 0))
+            glVertex2fv((height, width))
+            glVertex2fv((0, width))
+
+            glEnd()
+            glPopMatrix()
 
 
 class Game:
     def __init__(self, config_file):
         self.Config = {}
         self.load_config(config_file)
-        self.Screen: typing.Optional[pg.Surface] = None
-        self.ScreenRect = pg.Rect(0, 0, 800, 800)
+        self.display_size = np.array((self.Config["display"]["width"], self.Config["display"]["height"]))
+        self.field_size = np.array((self.Config["field"]["width"], self.Config["field"]["height"]))
+        self.frame_rate = self.Config["frame rate"]
+
         self.Clock = pg.time.Clock()
         self.all_sprites = pg.sprite.Group()
         self.initialize_pygame()
@@ -45,8 +59,7 @@ class Game:
 
     def initialize_pygame(self):
         pg.init()
-        display = (800, 640)
-        pg.display.set_mode(display, pg.DOUBLEBUF | pg.OPENGL)
+        pg.display.set_mode(self.display_size, pg.DOUBLEBUF | pg.OPENGL)
 
     def initialize_objects(self):
         self.grid = Grid()
@@ -56,6 +69,7 @@ class Game:
         Execute the game loop
         """
         while True:
+            t = pg.time.get_ticks() / 1000
             # get input
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -65,14 +79,24 @@ class Game:
 
             # update all the sprites
             # self.all_sprites.update()
+            self.grid.update()
 
             # draw the scene
             # self.Screen.fill(pg.Color(63, 0, 31))
             # dirty = self.all_sprites.draw(self.Screen)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glPushMatrix()
+
+            # Compensate display ratio
+            glScale(self.display_size[1]/self.display_size[0], 1, 1)
+            # Scale to fit the whole field
+            glScale(*(1/self.field_size), 1)
+            glRotate(5*t % 360, 0, 0, 1)
+            glTranslate(-100, -100, 0)
             self.grid.draw()
+            glPopMatrix()
             pg.display.flip()
             # pg.display.update(dirty)
 
             # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
-            self.Clock.tick(40)
+            self.Clock.tick(self.frame_rate)
