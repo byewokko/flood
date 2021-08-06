@@ -42,9 +42,15 @@ class Game:
         """
         Execute the game loop
         """
+        round = 0
+        last_update = 0
         self.running = True
         while self.running:
             t = pg.time.get_ticks() / 1000
+            if t - last_update > 0.5:
+                last_update = t
+                round += 1
+                self.grid.step_update(round)
 
             self.get_inputs(t)
 

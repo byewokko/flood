@@ -10,30 +10,48 @@ class Grid(DrawableABC):
         assert shape[0] > 1
         assert shape[1] > 1
         self.shape = shape
-        self.base_grid = np.random.random(self.shape)
+        self.water_grid = np.zeros(self.shape)
         self.scale = scale
         self.padding = padding
-        self.color = np.array((0.5, 0, 0.2))
+        self.color_ground = np.array((0.15, 0, 0.05))
+        self.color_water = np.array((0.3, 0.4, 1))
 
     def step_update(self, r):
-        pass
+        self.water_step()
+
+    def water_step(self):
+        self.water_grid[3, 5] = 1
+        new_grid = np.zeros_like(self.water_grid)
+        # for (i, j) in np.ndindex(self.shape):
+        #     # Sum differences with neighboring cells
+        neighbors = np.roll(self.water_grid, 1, 0) \
+            + np.roll(self.water_grid, 1, 1) \
+            + np.roll(self.water_grid, -1, 0) \
+            + np.roll(self.water_grid, -1, 1)
+        new_grid = (self.water_grid + neighbors) / 5
+        self.water_grid = new_grid
 
     def continuous_update(self, t):
         pass
 
     def draw(self, t):
         glPolygonMode(GL_FRONT, GL_FILL)
-        glColor3f(*self.color)
         for (i, j) in np.ndindex(self.shape):
+            if self.water_grid[i, j] > 0:
+                padding = 0
+                glColor3f(*(self.color_water * self.water_grid[i, j]))
+            else:
+                padding = self.padding
+                glColor3f(*self.color_ground)
             glPushMatrix()
             glScale(self.scale, self.scale, 1)
             glTranslate(i, j, 0)
 
             glBegin(GL_QUADS)
             glVertex2fv((0, 0))
-            glVertex2fv((1-self.padding, 0))
-            glVertex2fv((1-self.padding, 1-self.padding))
-            glVertex2fv((0, 1-self.padding))
+            glVertex2fv((1-padding, 0))
+            glVertex2fv((1-padding, 1-padding))
+            glVertex2fv((0, 1-padding))
             glEnd()
 
             glPopMatrix()
