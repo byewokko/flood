@@ -65,7 +65,7 @@ class Game:
                 return
 
     def update(self, t):
-        self.grid.update()
+        self.grid.update(t)
 
     def draw(self, t):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -78,7 +78,7 @@ class Game:
         # Compensate display ratio distortion
         glScale(*self.display_compensation)
 
-        self.grid.draw()
+        self.grid.draw(t)
 
         glPopMatrix()
         pg.display.flip()
