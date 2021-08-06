@@ -1,40 +1,39 @@
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from .drawable import DrawableABC
 
 
-class Grid:
-    def __init__(self):
-        self.size = (30, 20, 3)
-        self.grid = np.random.random(self.size)
-        self.xspacing = 8
-        self.yspacing = 8
-        self.width_ratio = 1
-        self.height_ratio = 1
+class Grid(DrawableABC):
+    def __init__(self, shape, padding=0.1, scale=8):
+        assert len(shape) == 2
+        assert shape[0] > 1
+        assert shape[1] > 1
+        self.shape = shape
+        self.base_grid = np.random.random(self.shape)
+        self.scale = scale
+        self.padding = padding
         self.color = np.array((0.5, 0, 0.2))
-        self.flash_color = np.array((0.5, 0.3, 0.3))
-        self.color_smoothing = 3
 
-    def update(self, t):
-        flash = (np.random.random(self.size) > 0.999) * self.flash_color
-        self.grid = (
-            (self.color_smoothing*self.grid + np.random.random(self.size) * self.color) / (self.color_smoothing+1)
-        ) + flash
+    def step_update(self, r):
+        pass
+
+    def continuous_update(self, t):
+        pass
 
     def draw(self, t):
         glPolygonMode(GL_FRONT, GL_FILL)
-        for (i, j) in np.ndindex(self.size[:2]):
+        glColor3f(*self.color)
+        for (i, j) in np.ndindex(self.shape):
             glPushMatrix()
-            glScale(self.xspacing, self.yspacing, 1)
+            glScale(self.scale, self.scale, 1)
             glTranslate(i, j, 0)
-            glRotate(5*(12*t + 5*i + 2*j) % 360, 0, 0, 1)
-            glColor3f(*self.grid[i, j, :])
 
             glBegin(GL_QUADS)
             glVertex2fv((0, 0))
-            glVertex2fv((self.height_ratio, 0))
-            glVertex2fv((self.height_ratio, self.width_ratio))
-            glVertex2fv((0, self.width_ratio))
+            glVertex2fv((1-self.padding, 0))
+            glVertex2fv((1-self.padding, 1-self.padding))
+            glVertex2fv((0, 1-self.padding))
             glEnd()
 
             glPopMatrix()

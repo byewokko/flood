@@ -4,7 +4,7 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from .objects.flashgrid import Grid
+from .objects.grid import Grid
 
 
 class Game:
@@ -30,14 +30,13 @@ class Game:
     def initialize_pygame(self):
         pg.init()
         pg.display.set_mode(self.display_size, pg.DOUBLEBUF | pg.OPENGL)
-        print(self.display_size)
         if self.display_size[1] > self.display_size[0]:
             self.display_compensation = (self.display_size[1]/self.display_size[0], 1, 1)
         elif self.display_size[1] < self.display_size[0]:
             self.display_compensation = (1, self.display_size[0]/self.display_size[1], 1)
 
     def initialize_objects(self):
-        self.grid = Grid()
+        self.grid = Grid((20, 20), 0.1, 8)
 
     def run(self):
         """
@@ -65,7 +64,7 @@ class Game:
                 return
 
     def update(self, t):
-        self.grid.update(t)
+        self.grid.continuous_update(t)
 
     def draw(self, t):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
