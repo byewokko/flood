@@ -47,7 +47,7 @@ class Game:
         self.running = True
         while self.running:
             t = pg.time.get_ticks() / 1000
-            if t - last_update > 0.5:
+            if t - last_update > 0.2:
                 last_update = t
                 round += 1
                 self.grid.step_update(round)
