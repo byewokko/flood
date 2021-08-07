@@ -4,7 +4,7 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from .objects.grid import Grid
+from .objects.simplewatergrid import SimpleWaterGrid
 
 
 class Game:
@@ -36,7 +36,13 @@ class Game:
             self.display_compensation = (1, self.display_size[0]/self.display_size[1], 1)
 
     def initialize_objects(self):
-        self.grid = Grid((20, 20), 8, 0.2)
+        self.grid = SimpleWaterGrid(
+            (20, 20),
+            # terrain_levels=6,
+            # water_levels=12,
+            # scale=8,
+            # padding=0.2
+        )
 
     def run(self):
         """
