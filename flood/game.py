@@ -78,7 +78,8 @@ class Game:
 
         # Scale to fit the whole field
         glScale(*(1 / self.field_size), 1)
-        # Translate so that 0, 0 is bottom left
+        # Scale and translate so that 0, 0 is top left
+        glScale(1, -1, 1)
         glTranslate(*(-self.field_size), 0)
         # Compensate display ratio distortion
         glScale(*self.display_compensation)
