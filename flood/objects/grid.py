@@ -82,7 +82,7 @@ class Grid(DrawableABC):
             if self.water_grid[i, j] > 0:
                 padding = 0
                 water_level = min(self.water_grid[i, j]/12, 1)
-                glColor3f(*(self.color_water[:2] * np.sin(water_level * np.pi/2)), 0.2 + 0.8*water_level)
+                glColor3f(*(self.color_water[:2] * np.cos(water_level * np.pi/2)), 1 - 0.6*water_level)
             else:
                 padding = self.padding
                 glColor3f(*self.color_ground)
