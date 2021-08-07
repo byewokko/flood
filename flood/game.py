@@ -36,7 +36,7 @@ class Game:
             self.display_compensation = (1, self.display_size[0]/self.display_size[1], 1)
 
     def initialize_objects(self):
-        self.grid = Grid((20, 20), 0.1, 8)
+        self.grid = Grid((20, 20), 8, 0.2)
 
     def run(self):
         """

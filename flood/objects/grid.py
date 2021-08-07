@@ -4,13 +4,23 @@ from OpenGL.GLU import *
 from .drawable import DrawableABC
 
 
+def make_neighbor_grid(shape):
+    grid = np.ones(shape, dtype=np.int32) * 5
+    grid[:, 0] -= 1
+    grid[:, -1] -= 1
+    grid[0, :] -= 1
+    grid[-1, :] -= 1
+    return grid
+
+
 class Grid(DrawableABC):
-    def __init__(self, shape, padding=0.1, scale=8):
+    def __init__(self, shape, scale=8, padding=0.1):
         assert len(shape) == 2
         assert shape[0] > 1
         assert shape[1] > 1
         self.shape = shape
         self.water_grid = np.zeros(self.shape)
+        self.neighbor_grid = make_neighbor_grid(self.shape)
         self.scale = scale
         self.padding = padding
         self.color_ground = np.array((0.15, 0, 0.05))
@@ -20,16 +30,17 @@ class Grid(DrawableABC):
         self.water_step()
 
     def water_step(self):
-        self.water_grid[3, 5] = 1
+        self.water_grid[3, 5] += 1
         new_grid = np.zeros_like(self.water_grid)
         # for (i, j) in np.ndindex(self.shape):
         #     # Sum differences with neighboring cells
-        neighbors = np.roll(self.water_grid, 1, 0) \
-            + np.roll(self.water_grid, 1, 1) \
-            + np.roll(self.water_grid, -1, 0) \
-            + np.roll(self.water_grid, -1, 1)
-        new_grid = (self.water_grid + neighbors) / 5
+        neighbors = np.pad(self.water_grid, ((1, 0), (0, 0)), constant_values=0)[:-1, :] \
+            + np.pad(self.water_grid, ((0, 1), (0, 0)), constant_values=0)[1:, :] \
+            + np.pad(self.water_grid, ((0, 0), (1, 0)), constant_values=0)[:, :-1] \
+            + np.pad(self.water_grid, ((0, 0), (0, 1)), constant_values=0)[:, 1:]
+        new_grid = (self.water_grid + neighbors) / self.neighbor_grid
         self.water_grid = new_grid
+        print(f"Total water: {np.sum(self.water_grid)}")
 
     def continuous_update(self, t):
         pass
@@ -37,9 +48,10 @@ class Grid(DrawableABC):
     def draw(self, t):
         glPolygonMode(GL_FRONT, GL_FILL)
         for (i, j) in np.ndindex(self.shape):
-            if self.water_grid[i, j] > 0:
+            if self.water_grid[i, j] > 0.1:
                 padding = 0
-                glColor3f(*(self.color_water * self.water_grid[i, j]))
+                water_level = min(self.water_grid[i, j], 1)
+                glColor3f(*(self.color_water[:2] * np.sin(water_level * np.pi/2)), 0.4 + 0.6*water_level)
             else:
                 padding = self.padding
                 glColor3f(*self.color_ground)
@@ -48,10 +60,10 @@ class Grid(DrawableABC):
             glTranslate(i, j, 0)
 
             glBegin(GL_QUADS)
-            glVertex2fv((0, 0))
-            glVertex2fv((1-padding, 0))
+            glVertex2fv((padding, padding))
+            glVertex2fv((1-padding, padding))
             glVertex2fv((1-padding, 1-padding))
-            glVertex2fv((0, 1-padding))
+            glVertex2fv((padding, 1-padding))
             glEnd()
 
             glPopMatrix()
