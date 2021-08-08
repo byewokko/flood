@@ -62,8 +62,9 @@ class Cell(DrawableABC):
 
         # Initiate flow with a tiny number in random direction
         # self.flow = (np.random.random(2) - 0.5)/10
-        self.flow = np.zeros(2)
-        self.new_flow = np.zeros(2)
+        self.flow = np.zeros(4)
+        self.slant = np.zeros(4)
+        self.new_flow = np.zeros(4)
         self.flow_vectors = self.neighbor_vectors.copy()
 
     def initialize(self):
@@ -86,14 +87,17 @@ class Cell(DrawableABC):
         #     # self.flow_vectors[3] += np.array((slant*SLANT_FACTOR, 0), dtype=int)
         #     self.flow_vectors[3] *= slant
 
-        self.slant = {}
+
         for i, n in self.neighbors.items():
             slant = self.terrain_level - n.terrain_level
             if slant != 0:
                 self.slant[i] = slant
 
     def absolute_level(self):
-        return self.water_level + 1 * self.terrain_level
+        return self.water_level + self.terrain_level
+
+    def can_receive(self):
+        return 10 - sum(self.received_water)
 
     def calculate_step_update(self, r):
         if self.water_level <= 0:
@@ -101,21 +105,38 @@ class Cell(DrawableABC):
 
         # 1) Distribute water down the slope
 
-        for i, slant in self.slant.items():
+        for i, slant in enumerate(self.slant):
             if self.water_level <= self.given_water:
                 return
-            if slant > 0:
-                self.neighbors[i].received_water[i] += 1
-                self.given_water += 1
+            if slant > 0 and i in self.neighbors:
+                amount = min(
+                    np.ceil(self.water_level * 0.5 * slant),
+                    self.water_level,
+                    self.neighbors[i].can_receive()
+                )
+                self.neighbors[i].received_water[i] += amount
+                self.given_water += amount
 
         # 2) Flow
 
-        for i, flow in enumerate(self.flow):
-            if self.water_level <= self.given_water:
-                return
-            if flow > 1 and i in self.neighbors:
-                self.neighbors[i].received_water[i] += 1
-                self.given_water += 1
+        if self.water_level > 2:
+            average_flow = (
+                np.sum([cell.flow for cell in self.neighbors.values()], axis=0) + self.flow
+            ) / (len(self.neighbors) + 1)
+            # average_flow += 3*self.slant
+
+            for i, flow in enumerate(average_flow):
+                if self.water_level <= self.given_water:
+                    return
+                if flow > 0 and i in self.neighbors:
+                    amount = min(
+                        np.ceil(self.water_level * 0.1) * flow,
+                        self.water_level - 1,
+                        self.neighbors[i].can_receive()
+                    )
+                    # amount = (flow + 1) // 2
+                    self.neighbors[i].received_water[i] += amount
+                    self.given_water += amount
 
         # 2) Split the surplus with the lowest neighbor
 
@@ -133,8 +154,9 @@ class Cell(DrawableABC):
             return
 
         water_share = min(
-            self.water_level,
-            (neighbor_difference[direction] + 0) // 2
+            self.water_level - 1,
+            (neighbor_difference[direction] + 0) // 2,
+            self.neighbors[direction].can_receive()
         )
 
         if water_share < 2:
@@ -158,6 +180,7 @@ class Cell(DrawableABC):
             self.received_water[2] - self.received_water[0],
             self.received_water[3] - self.received_water[1]
         ))
+        self.flow[self.slant < 0] = 0
         self.received_water = [0, 0, 0, 0]
         self.given_water = 0
 
@@ -190,7 +213,7 @@ class CellularWaterGrid(DrawableABC):
         self,
         shape,
         water_levels=12,
-        terrain_levels=12,
+        terrain_levels=24,
         scale=8,
         padding=0.2
     ):
@@ -215,6 +238,9 @@ class CellularWaterGrid(DrawableABC):
         for cell in self.cells:
             cell.initialize()
 
+        # self.grid[24, 23].water_level += 50
+        # self.grid[24, 24].water_level += 50
+
     def get_neighbors(self, coords):
         neighbors = {}
         # Right
@@ -233,7 +259,10 @@ class CellularWaterGrid(DrawableABC):
         return neighbors
 
     def step_update(self, r):
-        self.grid[-20, -5].water_level += 10
+        self.grid[24, 23].water_level += 10
+        self.grid[24, 24].water_level += 10
+        # self.grid[23, 23].water_level += 10
+        # self.grid[23, 24].water_level += 10
         for cell in self.cells:
             cell.calculate_step_update(r)
         for cell in self.cells:
