@@ -13,7 +13,8 @@ class Game:
         self.Config = {}
         self.load_config(config_file)
         self.display_size = np.array((self.Config["display"]["width"], self.Config["display"]["height"]))
-        self.field_size = np.array((self.Config["field"]["width"], self.Config["field"]["height"]))
+        self.view_size = np.array((self.Config["view"]["width"], self.Config["view"]["height"]))
+        self.map_size = (self.Config["map"]["width"], self.Config["map"]["height"])
         self.frame_rate = self.Config["frame rate"]
         self.display_compensation = (1, 1, 1)
         self.running = False
@@ -39,7 +40,7 @@ class Game:
     def initialize_objects(self):
         # self.grid = SimpleWaterGrid(
         self.grid = CellularWaterGrid(
-            (20, 20),
+            self.map_size,
             # terrain_levels=6,
             # water_levels=12,
             # scale=8,
@@ -85,10 +86,10 @@ class Game:
         glPushMatrix()
 
         # Scale to fit the whole field
-        glScale(*(1 / self.field_size), 1)
+        glScale(*(1 / self.view_size), 1)
         # Scale and translate so that 0, 0 is top left
         glScale(1, -1, 1)
-        glTranslate(*(-self.field_size), 0)
+        glTranslate(*(-self.view_size), 0)
         # Compensate display ratio distortion
         glScale(*self.display_compensation)
 

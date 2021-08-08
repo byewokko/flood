@@ -37,10 +37,10 @@ def make_terrain_grid(shape, levels):
 
 class Cell(DrawableABC):
     neighbor_vectors = np.array((
-        (0, 1),
-        (-1, 0),
-        (0, -1),
-        (1, 0)
+        (0, 1),   # RIGHT
+        (-1, 0),  # UP
+        (0, -1),  # LEFT
+        (1, 0)    # DOWN
     ))
 
     def __init__(self, grid, coords, terrain_level, water_level):
@@ -49,60 +49,64 @@ class Cell(DrawableABC):
         self.terrain_level = terrain_level
         self.water_level = water_level
         self.neighbors: Dict[int, Cell] = {}
-        self.slant = [0, 0]
         self.received_water = 0
         self.given_water = 0
 
         # Initiate flow with a tiny number in random direction
-        self.flow = (np.random.random(2) - 0.5)/10
+        # self.flow = (np.random.random(2) - 0.5)/10
+        self.flow = np.zeros(2)
         self.new_flow = np.zeros(2)
+        self.flow_vectors = self.neighbor_vectors.copy()
 
     def initialize(self):
+        SLANT_FACTOR = 1
         self.neighbors = self.grid.get_neighbors(self.coords)
-        slant = np.zeros(4)
-        slant[:] = np.nan
-        primary_slant = {}
         if 0 in self.neighbors:
-            slant[0] = self.terrain_level - self.neighbors[0].terrain_level
-            primary_slant[0] = np.array((0, slant[0]))
+            slant = self.terrain_level - self.neighbors[0].terrain_level
+            self.flow_vectors[0] += np.array((0, slant*SLANT_FACTOR), dtype=int)
         if 1 in self.neighbors:
-            slant[1] = self.terrain_level - self.neighbors[1].terrain_level
-            primary_slant[1] = np.array((-slant[1], 0))
+            slant = self.terrain_level - self.neighbors[1].terrain_level
+            self.flow_vectors[1] += np.array((-slant*SLANT_FACTOR, 0), dtype=int)
         if 2 in self.neighbors:
-            slant[2] = self.terrain_level - self.neighbors[2].terrain_level
-            primary_slant[2] = np.array((0, -slant[2]))
+            slant = self.terrain_level - self.neighbors[2].terrain_level
+            self.flow_vectors[2] += np.array((0, -slant*SLANT_FACTOR), dtype=int)
         if 3 in self.neighbors:
-            slant[3] = self.terrain_level - self.neighbors[3].terrain_level
-            primary_slant[3] = np.array((slant[3], 0))
-        self.slant = slant
-        self.slant_vector = np.sum((
-            primary_slant.get(0, np.array((0, 0))),
-            primary_slant.get(2, np.array((0, 0))),
-            primary_slant.get(1, np.array((0, 0))),
-            primary_slant.get(3, np.array((0, 0)))
-        )) / 2
-        self.primary_slant_vector = primary_slant[int(np.nanargmax(np.abs(slant)))]
+            slant = self.terrain_level - self.neighbors[3].terrain_level
+            self.flow_vectors[3] += np.array((slant*SLANT_FACTOR, 0), dtype=int)
+
+    def absolute_level(self):
+        return self.water_level + self.terrain_level
 
     def calculate_step_update(self, r):
         if self.water_level <= 0:
             return
         # Average flow
-        self.new_flow = (np.sum(list(map(lambda c: c.flow, self.neighbors.values()))) + self.flow) / 5
-        self.new_flow += self.slant_vector
-        flow_dot_prod = np.dot(self.new_flow, self.neighbor_vectors.T)
-        directions = np.argsort(flow_dot_prod)
+        average_flow = (np.sum(list(map(lambda c: c.flow, self.neighbors.values())), axis=0)) / 4
+        neighbor_difference = self.absolute_level() - np.array((
+            self.neighbors[0].absolute_level() if 0 in self.neighbors else np.nan,
+            self.neighbors[1].absolute_level() if 1 in self.neighbors else np.nan,
+            self.neighbors[2].absolute_level() if 2 in self.neighbors else np.nan,
+            self.neighbors[3].absolute_level() if 3 in self.neighbors else np.nan,
+        ))
+        # self.new_flow = self.slant_vector
+        flow_dot_prod = np.dot(average_flow, self.flow_vectors.T)
+        weighted_difference = neighbor_difference + flow_dot_prod
+        directions = np.flip(np.argsort(weighted_difference))
         for d in directions:
             if (direction := int(d)) in self.neighbors:
                 break
-        water_amount = int(self.water_level * np.abs(self.new_flow[(direction + 1) % 2]))
-        water_amount = min(self.water_level, water_amount)
+        if weighted_difference[direction] <= 0:
+            return
+        water_amount = max(int((neighbor_difference[direction]) + 2) // 3, 0)
+        water_amount = min((self.water_level, water_amount))
         self.given_water += water_amount
         self.neighbors[direction].received_water += water_amount
-        self.new_flow[(direction + 1) % 2] = water_amount * (-1)**(direction in (1, 2))
-        self.new_flow[(direction) % 2] = 0
+        self.new_flow = self.neighbor_vectors[direction] * water_amount
 
     def step_update(self, r):
         self.water_level += self.received_water - self.given_water
+        # if self.received_water or self.given_water:
+        #     print(f"{tuple(self.coords)}: -{self.given_water} +{self.received_water} ={self.water_level}")
         self.flow = self.new_flow
         self.received_water = 0
         self.given_water = 0
@@ -179,7 +183,7 @@ class CellularWaterGrid(DrawableABC):
         return neighbors
 
     def step_update(self, r):
-        self.grid[3, 5].water_level = 6
+        self.grid[3, 5].water_level = 30
         for cell in self.cells:
             cell.calculate_step_update(r)
         for cell in self.cells:
