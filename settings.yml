@@ -2,9 +2,9 @@ display:
   width: 800
   height: 640
 view:
-  width: 240
-  height: 240
+  width: 320
+  height: 320
 map:
-  width: 48
-  height: 48
+  width: 64
+  height: 64
 frame rate: 40
