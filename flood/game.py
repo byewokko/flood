@@ -4,7 +4,8 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from flood.maps.cellularwatergrid import CellularWaterGrid
+from .maps import CellularWaterGrid
+from .maps import SearchWaterGrid
 
 
 class Game:
@@ -38,7 +39,7 @@ class Game:
 
     def initialize_objects(self):
         # self.grid = SimpleWaterGrid(
-        self.grid = CellularWaterGrid(
+        self.grid = SearchWaterGrid(
             self.map_size,
             # terrain_levels=6,
             # water_levels=12,
@@ -55,7 +56,7 @@ class Game:
         self.running = True
         while self.running:
             t = pg.time.get_ticks() / 1000
-            if t - last_update > 0.2:
+            if t - last_update > 0.1:
                 last_update = t
                 round += 1
                 self.grid.step_update(round)

@@ -26,7 +26,7 @@ def get_neighbor_coordinates(i, j, direction):
 def make_terrain_grid(shape, levels):
     base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
     noise = np.random.random(shape)
-    terrain = np.cos(base) * 8 - base.T * 3.6 + noise * 7
+    terrain = np.sin(base) * 8 - np.cos(base).T * 3.6 + noise * 7
     terrain -= terrain.min()
     terrain = terrain / terrain.max() * 6
     return np.floor(terrain)
@@ -36,7 +36,7 @@ class SearchWaterGrid(DrawableABC):
     def __init__(
         self,
         shape,
-        water_levels=12,
+        water_levels=6,
         terrain_levels=12,
         scale=8,
         padding=0.2
@@ -49,46 +49,73 @@ class SearchWaterGrid(DrawableABC):
         self.color_ground = np.array((0.5, 0.45, 0.45))
         self.color_water = np.array((0.3, 0.4, 1))
         self.shape = shape
-        self.water_levels = water_levels
-        self.water_grid = np.zeros(self.shape)
-        self.terrain_levels = terrain_levels
-        self.terrain_grid = make_terrain_grid(self.shape, self.terrain_levels)
-        self.sources = []
-        self.frontier = []
+        self.water_levels: int = water_levels
+        self.water_grid: np.ndarray = np.zeros(self.shape)
+        self.terrain_levels: int = terrain_levels
+        self.terrain_grid: np.ndarray = make_terrain_grid(self.shape, self.terrain_levels)
+        self._sources = set()
+        self._frontier = []
+        self._frontier_set = set()
 
+        self.add_source((24, 24))
+
+    def add_source(self, coords):
+        self._sources.add(coords)
+        self.add_to_frontier(coords, self.water_grid[coords])
+
+    def add_to_frontier(self, coords, level):
+        if (level, coords) in self._frontier_set:
+            return
+        if level in (np.nan, None):
+            raise ValueError(f"Invalida value: {level}")
+        self._frontier_set.add((level, coords))
+
+        heapq.heappush(
+            self._frontier,
+            [
+                level,
+                np.random.random(),
+                coords
+            ]
+        )
+
+    def frontier_pop(self):
+        level, _, coords = heapq.heappop(self._frontier)
+        self._frontier_set.remove((level, coords))
+        return coords
 
     def step_update(self, r):
-        self.water_step()
+        for _ in range(5):
+            self.water_step()
 
     def water_step(self):
-        self.water_grid[3, 5] += 5
-        new_grid = np.zeros_like(self.water_grid)
-        total_levels = self.water_grid + self.terrain_grid
-        neighbors_levels = np.stack([
-            np.pad(total_levels, ((1, 0), (0, 0)), constant_values=np.NaN)[:-1, :],  # 0 TOP
-            np.pad(total_levels, ((0, 1), (0, 0)), constant_values=np.NaN)[1:, :],   # 1 BOTTOM
-            np.pad(total_levels, ((0, 0), (1, 0)), constant_values=np.NaN)[:, :-1],  # 2 LEFT
-            np.pad(total_levels, ((0, 0), (0, 1)), constant_values=np.NaN)[:, 1:]    # 3 RIGHT
-        ], axis=-1)
-        water_queue = []
-        for (i, j) in np.ndindex(self.shape):
-            heapq.heappush(water_queue, (-self.water_grid[i, j], (i, j)))
-        while water_queue:
-            neg_lvl, (i, j) = heapq.heappop(water_queue)
-            if neg_lvl == 0:
-                # No more water to redistribute
-                break
-            direction = np.nanargmin(neighbors_levels[i, j, :])
-            i2, j2 = get_neighbor_coordinates(i, j, direction)
-            share = min(
-                (total_levels[i, j] - total_levels[i2, j2]) // 2,
-                self.water_grid[i, j]
-            )
-            new_grid[i, j] += self.water_grid[i, j] - share
-            new_grid[i2, j2] += share
+        try:
+            coords = self.frontier_pop()
+        except IndexError:
+            # New source?
+            return
 
-        self.water_grid = new_grid
-        print(f"Total water: {np.sum(self.water_grid)}")
+        self.water_grid[coords] += 1
+        if coords in self._sources:
+            self.add_to_frontier(coords, self.water_grid[coords])
+
+        this_level = self.water_grid[coords] + self.terrain_grid[coords]
+
+        # add neighbors
+        for neighbor in [
+            (coords[0] - 1, coords[1]),
+            (coords[0] + 1, coords[1]),
+            (coords[0], coords[1] - 1),
+            (coords[0], coords[1] + 1)
+        ]:
+            if not ((0 <= neighbor[0] < self.shape[0]) and (0 <= neighbor[1] < self.shape[1])):
+                continue
+            neighbor_level = self.water_grid[neighbor] + self.terrain_grid[neighbor]
+            if neighbor_level is np.nan:
+                continue
+            difference = this_level - neighbor_level
+            for i in range(int(difference)):
+                self.add_to_frontier(neighbor, neighbor_level+i)
 
     def continuous_update(self, t):
         pass
