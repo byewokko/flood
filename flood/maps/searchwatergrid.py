@@ -1,4 +1,5 @@
 import numpy as np
+from perlin_noise import PerlinNoise
 from OpenGL.GL import *
 from flood.abc.drawable import DrawableABC
 import heapq
@@ -23,13 +24,48 @@ def get_neighbor_coordinates(i, j, direction):
     return func[direction](i, j)
 
 
-def make_terrain_grid(shape, levels):
-    base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
-    noise = np.random.random(shape)
-    terrain = base*np.sin(2*base) * 1 - base.T+np.cos(1.5*base).T * 3 + noise * 3
+def make_terrain_grid(shape, levels, preset):
+    if preset == "bumps1":
+        base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
+        noise = np.random.random(shape)
+        terrain = base*np.sin(2*base) * 1 - base.T+np.cos(1.5*base).T * 3 + noise * 3
+    elif preset == "well":
+        base = np.tile(np.linspace(0, 2 * np.pi, num=shape[0]), (shape[1], 1))
+        noise = np.random.random(shape)
+        terrain = base * np.sin(base) - base.T * 3 + noise * 3
+        x = shape[0] // 8
+        y = shape[1] // 8
+        terrain[3*x:5*x, 3*y:5*y] = terrain.min() - 2
+    elif preset == "walls":
+        terrain = np.zeros(shape)
+        noise_gen = PerlinNoise(octaves=8)
+        terrain = np.reshape([
+            noise_gen([x/shape[0], y/shape[1]])
+            for (x, y)
+            in np.ndindex(shape)
+        ], shape) * 4
+        x = shape[0] // 8
+        y = shape[1] // 8
+        terrain[3*x, 3*y:5*y] = 5
+        terrain[5*x, 3*y:5*y] = 5
+        terrain[3*x:5*x, 3*y] = 5
+        terrain[3*x:5*x, 5*y] = 5
+        terrain[:, 1*y] = -1
+        terrain[1*x, :] = -1
+        terrain[:, 4*y] = 4
+        terrain[4*x, :] = 4
+    elif preset == "perlin":
+        noise_gen = PerlinNoise(octaves=8)
+        terrain = np.reshape([
+            noise_gen([x/shape[0], y/shape[1]])
+            for (x, y)
+            in np.ndindex(shape)
+        ], shape)
+
     terrain -= terrain.min()
-    terrain = terrain / terrain.max() * 6
-    return np.floor(terrain)
+    terrain = terrain / terrain.max() * levels
+    terrain = np.floor(terrain)
+    return terrain
 
 
 class SearchWaterGrid(DrawableABC):
@@ -52,13 +88,14 @@ class SearchWaterGrid(DrawableABC):
         self.water_levels: int = water_levels
         self.water_grid: np.ndarray = np.zeros(self.shape)
         self.terrain_levels: int = terrain_levels
-        self.terrain_grid: np.ndarray = make_terrain_grid(self.shape, self.terrain_levels)
+        self.terrain_grid: np.ndarray = make_terrain_grid(self.shape, self.terrain_levels, "walls")
         self._sources = set()
         self._frontier = []
-        self._frontier_set = {}
+        self._frontier_set = set()
         self._explored = set()
 
-        self.add_source((40, 5))
+        self.add_source((10, 20))
+        # self.add_source((40, 5))
         # self.add_source((64-4, 64-8))
         # self.add_source((28, 20))
 
@@ -69,9 +106,11 @@ class SearchWaterGrid(DrawableABC):
     def add_to_frontier(self, coords, level, delay=0):
         if (level, coords) in self._explored:
             return
+        if (level, coords) in self._frontier_set:
+            return
         if level in (np.nan, None):
             raise ValueError(f"Invalid value: {level}")
-        self._frontier_set[(level, coords)] = 0
+        self._frontier_set.add((level, coords))
 
         heapq.heappush(
             self._frontier,
@@ -84,8 +123,10 @@ class SearchWaterGrid(DrawableABC):
 
     def frontier_pop(self):
         level, _, coords = heapq.heappop(self._frontier)
+        self._frontier_set.remove((level, coords))
         while (coords, level) in self._explored:
             level, _, coords = heapq.heappop(self._frontier)
+            self._frontier_set.remove((level, coords))
         self._explored.add((coords, level))
         return coords, level
 
