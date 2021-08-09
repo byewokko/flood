@@ -90,7 +90,7 @@ class FrExWaterGrid(DrawableABC):
         self.water_grid[coords] += 1
         this_level += 1
         if coords in self._sources:
-            self.add_to_frontier(coords, self.water_grid[coords]+1, priority)
+            self.add_to_frontier(coords, this_level+1, priority)
 
         # add neighbors
         for neighbor in [
@@ -105,6 +105,7 @@ class FrExWaterGrid(DrawableABC):
             if neighbor_level is np.nan:
                 continue
             difference = this_level - neighbor_level
+            # TODO: prioritize expansion down steep slopes
             for i in range(int(difference)):
                 self.add_to_frontier(neighbor, neighbor_level+i, priority)
 
@@ -137,23 +138,27 @@ class FrExWaterGrid(DrawableABC):
 
 if __name__ == "__main__":
     import pygame as pg
-    pg.init()
-    pg.display.set_mode((800, 640), pg.DOUBLEBUF | pg.OPENGL)
+    window_size = (800, 640)
     view_size = np.array((320, 320))
-    display_compensation = (1, 800/640, 1)
+    display_compensation = (1, window_size[0]/window_size[1], 1)
+    frame_rate = 40
+
+    pg.init()
+    pg.display.set_mode(window_size, pg.DOUBLEBUF | pg.OPENGL)
     clock = pg.time.Clock()
     grid = FrExWaterGrid(
         shape=(64, 64),
         water_levels=4,
-        terrain_levels=6,
+        terrain_levels=4,
         scale=8,
         padding=0.1,
-        terrain_preset="perlin"
+        terrain_preset="perlin4"
     )
     grid.add_source((10, 20))
+    grid.add_source((30, 30))
 
     stop = False
-    r = 0
+    r = 0  # round_number
     while not stop:
         t = pg.time.get_ticks() / 1000
         r += 1
@@ -182,4 +187,4 @@ if __name__ == "__main__":
         glPopMatrix()
         pg.display.flip()
 
-        clock.tick(40)
+        clock.tick(frame_rate)
