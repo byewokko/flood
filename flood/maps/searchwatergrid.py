@@ -36,8 +36,8 @@ class SearchWaterGrid(DrawableABC):
     def __init__(
         self,
         shape,
-        water_levels=6,
-        terrain_levels=12,
+        water_levels=4,
+        terrain_levels=8,
         scale=8,
         padding=0.2
     ):
@@ -47,7 +47,7 @@ class SearchWaterGrid(DrawableABC):
         self.scale = scale
         self.padding = padding
         self.color_ground = np.array((0.5, 0.45, 0.45))
-        self.color_water = np.array((0.3, 0.4, 1))
+        self.color_water = np.array((0.2, 0.3, 1))
         self.shape = shape
         self.water_levels: int = water_levels
         self.water_grid: np.ndarray = np.zeros(self.shape)
@@ -64,7 +64,7 @@ class SearchWaterGrid(DrawableABC):
         self._sources.add(coords)
         self.add_to_frontier(coords, self.water_grid[coords] + self.terrain_grid[coords])
 
-    def add_to_frontier(self, coords, level):
+    def add_to_frontier(self, coords, level, delay=0):
         if (level, coords) in self._explored:
             return
         if (level, coords) in self._frontier_set:
@@ -76,7 +76,7 @@ class SearchWaterGrid(DrawableABC):
                     self._frontier,
                     [
                         level,
-                        0.01*np.random.random(),
+                        0.01*(np.random.random()+delay),
                         coords
                     ]
                 )
@@ -89,7 +89,7 @@ class SearchWaterGrid(DrawableABC):
             self._frontier,
             [
                 level,
-                np.random.random(),
+                np.random.random() + delay,
                 coords
             ]
         )
@@ -101,9 +101,10 @@ class SearchWaterGrid(DrawableABC):
 
     def step_update(self, r):
         for _ in range(5):
-            self.water_step()
+            self.water_step(r)
 
-    def water_step(self):
+    def water_step(self, r):
+        priority = r*0.01
         try:
             coords, frontier_level = self.frontier_pop()
         except IndexError:
@@ -118,7 +119,7 @@ class SearchWaterGrid(DrawableABC):
         self.water_grid[coords] += 1
         this_level += 1
         if coords in self._sources:
-            self.add_to_frontier(coords, self.water_grid[coords])
+            self.add_to_frontier(coords, self.water_grid[coords], priority)
 
         # add neighbors
         for neighbor in [
@@ -134,7 +135,7 @@ class SearchWaterGrid(DrawableABC):
                 continue
             difference = this_level - neighbor_level
             for i in range(int(difference)):
-                self.add_to_frontier(neighbor, neighbor_level+i)
+                self.add_to_frontier(neighbor, neighbor_level+i, priority)
 
     def continuous_update(self, t):
         pass
@@ -144,8 +145,8 @@ class SearchWaterGrid(DrawableABC):
         for (i, j) in np.ndindex(self.shape):
             if self.water_grid[i, j] > 0:
                 padding = 0
-                water_level = min(self.water_grid[i, j]/self.water_levels, 1)
-                glColor3f(*(self.color_water[:2] * np.cos(water_level * np.pi/2)), 1 - 0.6*water_level)
+                water_level = (self.water_grid[i, j]-1)/self.water_levels
+                glColor3f(*(self.color_water[:2] * (1-water_level)), np.cos(water_level * np.pi/2))
             else:
                 padding = self.padding
                 glColor3f(*(self.color_ground * self.terrain_grid[i, j]/self.terrain_levels))
