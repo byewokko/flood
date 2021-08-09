@@ -24,10 +24,10 @@ def generate_terrain(shape, levels, preset="perlin"):
         ], shape) * 4
         x = shape[0] // 8
         y = shape[1] // 8
-        terrain[3*x, 3*y:5*y] = 5
-        terrain[5*x, 3*y:5*y] = 5
-        terrain[3*x:5*x, 3*y] = 5
-        terrain[3*x:5*x, 5*y] = 5
+        terrain[3*x, 3*y:5*y+1] = 5
+        terrain[5*x, 3*y:5*y+1] = 5
+        terrain[3*x:5*x+1, 3*y] = 5
+        terrain[3*x:5*x+1, 5*y] = 5
         terrain[:, 1*y] = -1
         terrain[1*x, :] = -1
         terrain[:, 4*y] = 4

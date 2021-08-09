@@ -3,7 +3,7 @@ import numpy as np
 from OpenGL.GL import *
 
 from flood.abc.drawable import DrawableABC
-from .utils import generate_terrain
+from utils import generate_terrain
 
 
 class Cell(DrawableABC):
@@ -13,12 +13,6 @@ class Cell(DrawableABC):
         (0, -1),  # LEFT
         (1, 0)    # DOWN
     ))
-    invert_direction = {
-        0: 2,
-        1: 3,
-        2: 0,
-        3: 1
-    }
 
     def __init__(self, grid, coords, terrain_level, water_level):
         self.grid = grid

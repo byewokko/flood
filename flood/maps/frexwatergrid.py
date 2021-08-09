@@ -3,7 +3,7 @@ from OpenGL.GL import *
 import heapq
 
 from flood.abc.drawable import DrawableABC
-from .utils import generate_terrain
+from utils import generate_terrain
 
 
 class FrExWaterGrid(DrawableABC):
@@ -19,7 +19,9 @@ class FrExWaterGrid(DrawableABC):
         water_levels=4,
         terrain_levels=6,
         scale=8,
-        padding=0.1
+        padding=0.1,
+        breadth_first_factor=0.1,
+        terrain_preset="perlin"
     ):
         assert len(shape) == 2
         assert shape[0] > 1
@@ -32,16 +34,12 @@ class FrExWaterGrid(DrawableABC):
         self.water_levels: int = water_levels
         self.water_grid: np.ndarray = np.zeros(self.shape)
         self.terrain_levels: int = terrain_levels
-        self.terrain_grid: np.ndarray = generate_terrain(self.shape, self.terrain_levels, "walls")
+        self.terrain_grid: np.ndarray = generate_terrain(self.shape, self.terrain_levels, terrain_preset)
+        self.breadth_first_factor = breadth_first_factor
         self._sources = set()
         self._frontier = []
         self._frontier_set = set()
         self._explored = set()
-
-        self.add_source((10, 20))
-        # self.add_source((40, 5))
-        # self.add_source((64-4, 64-8))
-        # self.add_source((28, 20))
 
     def add_source(self, coords):
         self._sources.add(coords)
@@ -74,12 +72,12 @@ class FrExWaterGrid(DrawableABC):
         self._explored.add((coords, level))
         return coords, level
 
-    def step_update(self, r):
-        for _ in range(6):
+    def step_update(self, r, n_steps=1):
+        for _ in range(n_steps):
             self.water_step(r)
 
     def water_step(self, r):
-        priority = r*0.1
+        priority = r * self.breadth_first_factor
         try:
             coords, frontier_level = self.frontier_pop()
         except IndexError:
@@ -88,9 +86,6 @@ class FrExWaterGrid(DrawableABC):
             return
 
         this_level = self.water_grid[coords] + self.terrain_grid[coords]
-        # if this_level != frontier_level:
-        #     # Old entry
-        #     return
 
         self.water_grid[coords] += 1
         this_level += 1
@@ -138,3 +133,53 @@ class FrExWaterGrid(DrawableABC):
             glEnd()
 
             glPopMatrix()
+
+
+if __name__ == "__main__":
+    import pygame as pg
+    pg.init()
+    pg.display.set_mode((800, 640), pg.DOUBLEBUF | pg.OPENGL)
+    view_size = np.array((320, 320))
+    display_compensation = (1, 800/640, 1)
+    clock = pg.time.Clock()
+    grid = FrExWaterGrid(
+        shape=(64, 64),
+        water_levels=4,
+        terrain_levels=6,
+        scale=8,
+        padding=0.1,
+        terrain_preset="perlin"
+    )
+    grid.add_source((10, 20))
+
+    stop = False
+    r = 0
+    while not stop:
+        t = pg.time.get_ticks() / 1000
+        r += 1
+
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                stop = True
+            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+                stop = True
+
+        grid.step_update(r, n_steps=5)
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glPushMatrix()
+
+        # Scale to fit the whole view
+        glScale(*(1 / view_size), 1)
+        # Scale and translate so that 0, 0 is top left
+        glScale(1, -1, 1)
+        glTranslate(*(-view_size), 0)
+        # Compensate display ratio distortion
+        glScale(*display_compensation)
+
+        grid.draw(t)
+
+        glPopMatrix()
+        pg.display.flip()
+
+        clock.tick(40)

@@ -85,7 +85,7 @@ class Game:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glPushMatrix()
 
-        # Scale to fit the whole field
+        # Scale to fit the whole view
         glScale(*(1 / self.view_size), 1)
         # Scale and translate so that 0, 0 is top left
         glScale(1, -1, 1)
