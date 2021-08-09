@@ -1,4 +1,4 @@
-from drawable import DrawableABC
+from .drawable import DrawableABC
 
 __all__ = [
     "DrawableABC"
