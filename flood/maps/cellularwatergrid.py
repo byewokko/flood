@@ -1,11 +1,8 @@
-import random
 from typing import Dict
 
 import numpy as np
 from OpenGL.GL import *
-from OpenGL.GLU import *
-from .drawable import DrawableABC
-import heapq
+from flood.abc.drawable import DrawableABC
 
 
 def make_neighbor_grid(shape):

@@ -1,4 +1,4 @@
-from .drawable import DrawableABC
+from flood.abc.drawable import DrawableABC
 
 
 class Sprite(DrawableABC):

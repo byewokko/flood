@@ -1,7 +1,6 @@
 import numpy as np
 from OpenGL.GL import *
-from OpenGL.GLU import *
-from .drawable import DrawableABC
+from flood.abc.drawable import DrawableABC
 import heapq
 
 

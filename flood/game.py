@@ -4,8 +4,7 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from .objects.cellularwatergrid import CellularWaterGrid
-from .objects.simplewatergrid import SimpleWaterGrid
+from flood.maps.cellularwatergrid import CellularWaterGrid
 
 
 class Game:
