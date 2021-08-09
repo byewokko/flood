@@ -1,37 +1,9 @@
 from typing import Dict
-
 import numpy as np
 from OpenGL.GL import *
+
 from flood.abc.drawable import DrawableABC
-
-
-def make_neighbor_grid(shape):
-    grid = np.ones(shape, dtype=np.int32) * 4
-    grid[:, 0] -= 1
-    grid[:, -1] -= 1
-    grid[0, :] -= 1
-    grid[-1, :] -= 1
-    return grid
-
-
-def get_neighbor_coordinates(i, j, direction):
-    func = [
-        lambda x, y: (x-1, y),
-        lambda x, y: (x+1, y),
-        lambda x, y: (x, y-1),
-        lambda x, y: (x, y+1),
-    ]
-    return func[direction](i, j)
-
-
-def make_terrain_grid(shape, levels):
-    base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
-    noise = np.random.random(shape)
-    terrain = np.sin(base) * 8 - base.T * 2 + noise * 7
-    terrain -= terrain.min()
-    terrain = terrain / terrain.max() * levels
-    return np.floor(terrain)
-    # return terrain
+from .utils import generate_terrain
 
 
 class Cell(DrawableABC):
@@ -65,25 +37,7 @@ class Cell(DrawableABC):
         self.flow_vectors = self.neighbor_vectors.copy()
 
     def initialize(self):
-        SLANT_FACTOR = 1
         self.neighbors = self.grid.get_neighbors(self.coords)
-        # if 0 in self.neighbors:
-        #     slant = self.terrain_level - self.neighbors[0].terrain_level
-        #     # self.flow_vectors[0] *= np.array((0, slant*SLANT_FACTOR), dtype=int)
-        #     self.flow_vectors[0] *= slant
-        # if 1 in self.neighbors:
-        #     slant = self.terrain_level - self.neighbors[1].terrain_level
-        #     # self.flow_vectors[1] += np.array((-slant * SLANT_FACTOR, 0), dtype=int)
-        #     self.flow_vectors[1] *= slant
-        # if 2 in self.neighbors:
-        #     slant = self.terrain_level - self.neighbors[2].terrain_level
-        #     # self.flow_vectors[2] += np.array((0, -slant*SLANT_FACTOR), dtype=int)
-        #     self.flow_vectors[2] *= slant
-        # if 3 in self.neighbors:
-        #     slant = self.terrain_level - self.neighbors[3].terrain_level
-        #     # self.flow_vectors[3] += np.array((slant*SLANT_FACTOR, 0), dtype=int)
-        #     self.flow_vectors[3] *= slant
-
 
         for i, n in self.neighbors.items():
             slant = self.terrain_level - n.terrain_level
@@ -165,12 +119,6 @@ class Cell(DrawableABC):
 
     def step_update(self, r):
         self.water_level += sum(self.received_water) - self.given_water
-        # if self.received_water or self.given_water:
-        #     print(f"{tuple(self.coords)}: -{self.given_water} +{self.received_water} ={self.water_level}")
-        # self.flow = np.array((
-        #     self.received_water[3] - self.received_water[1],
-        #     self.received_water[0] - self.received_water[2]
-        # ))
         self.flow = np.array((
             self.received_water[0] - self.received_water[2],
             self.received_water[1] - self.received_water[3],
@@ -227,7 +175,7 @@ class CellularWaterGrid(DrawableABC):
 
         self.grid = np.zeros(self.shape, dtype="object")
         self.cells = []
-        terrain = make_terrain_grid(self.shape, self.terrain_levels)
+        terrain = generate_terrain(self.shape, self.terrain_levels)
         for (i, j) in np.ndindex(self.shape):
             cell = Cell(self, (i, j), terrain[i, j], 0)
             self.grid[i, j] = cell

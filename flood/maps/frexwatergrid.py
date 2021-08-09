@@ -1,74 +1,18 @@
 import numpy as np
-from perlin_noise import PerlinNoise
 from OpenGL.GL import *
-from flood.abc.drawable import DrawableABC
 import heapq
 
-
-def make_neighbor_grid(shape):
-    grid = np.ones(shape, dtype=np.int32) * 4
-    grid[:, 0] -= 1
-    grid[:, -1] -= 1
-    grid[0, :] -= 1
-    grid[-1, :] -= 1
-    return grid
+from flood.abc.drawable import DrawableABC
+from .utils import generate_terrain
 
 
-def get_neighbor_coordinates(i, j, direction):
-    func = [
-        lambda x, y: (x-1, y),
-        lambda x, y: (x+1, y),
-        lambda x, y: (x, y-1),
-        lambda x, y: (x, y+1),
-    ]
-    return func[direction](i, j)
+class FrExWaterGrid(DrawableABC):
+    """
+    Frontier Expansion Water Grid
+    ==============================
 
-
-def make_terrain_grid(shape, levels, preset):
-    if preset == "bumps1":
-        base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
-        noise = np.random.random(shape)
-        terrain = base*np.sin(2*base) * 1 - base.T+np.cos(1.5*base).T * 3 + noise * 3
-    elif preset == "well":
-        base = np.tile(np.linspace(0, 2 * np.pi, num=shape[0]), (shape[1], 1))
-        noise = np.random.random(shape)
-        terrain = base * np.sin(base) - base.T * 3 + noise * 3
-        x = shape[0] // 8
-        y = shape[1] // 8
-        terrain[3*x:5*x, 3*y:5*y] = terrain.min() - 2
-    elif preset == "walls":
-        terrain = np.zeros(shape)
-        noise_gen = PerlinNoise(octaves=8)
-        terrain = np.reshape([
-            noise_gen([x/shape[0], y/shape[1]])
-            for (x, y)
-            in np.ndindex(shape)
-        ], shape) * 4
-        x = shape[0] // 8
-        y = shape[1] // 8
-        terrain[3*x, 3*y:5*y] = 5
-        terrain[5*x, 3*y:5*y] = 5
-        terrain[3*x:5*x, 3*y] = 5
-        terrain[3*x:5*x, 5*y] = 5
-        terrain[:, 1*y] = -1
-        terrain[1*x, :] = -1
-        terrain[:, 4*y] = 4
-        terrain[4*x, :] = 4
-    elif preset == "perlin":
-        noise_gen = PerlinNoise(octaves=8)
-        terrain = np.reshape([
-            noise_gen([x/shape[0], y/shape[1]])
-            for (x, y)
-            in np.ndindex(shape)
-        ], shape)
-
-    terrain -= terrain.min()
-    terrain = terrain / terrain.max() * levels
-    terrain = np.floor(terrain)
-    return terrain
-
-
-class SearchWaterGrid(DrawableABC):
+    Water always expands at the lowest unexpanded levels
+    """
     def __init__(
         self,
         shape,
@@ -88,7 +32,7 @@ class SearchWaterGrid(DrawableABC):
         self.water_levels: int = water_levels
         self.water_grid: np.ndarray = np.zeros(self.shape)
         self.terrain_levels: int = terrain_levels
-        self.terrain_grid: np.ndarray = make_terrain_grid(self.shape, self.terrain_levels, "walls")
+        self.terrain_grid: np.ndarray = generate_terrain(self.shape, self.terrain_levels, "walls")
         self._sources = set()
         self._frontier = []
         self._frontier_set = set()

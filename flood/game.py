@@ -5,7 +5,7 @@ import pygame as pg
 from OpenGL.GL import *
 
 from .maps import CellularWaterGrid
-from .maps import SearchWaterGrid
+from .maps import FrExWaterGrid
 
 
 class Game:
@@ -39,7 +39,7 @@ class Game:
 
     def initialize_objects(self):
         # self.grid = SimpleWaterGrid(
-        self.grid = SearchWaterGrid(
+        self.grid = FrExWaterGrid(
             self.map_size,
             # terrain_levels=6,
             # water_levels=12,

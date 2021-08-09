@@ -3,14 +3,7 @@ from OpenGL.GL import *
 from flood.abc.drawable import DrawableABC
 import heapq
 
-
-def make_neighbor_grid(shape):
-    grid = np.ones(shape, dtype=np.int32) * 4
-    grid[:, 0] -= 1
-    grid[:, -1] -= 1
-    grid[0, :] -= 1
-    grid[-1, :] -= 1
-    return grid
+from .utils import generate_terrain
 
 
 def get_neighbor_coordinates(i, j, direction):
@@ -21,15 +14,6 @@ def get_neighbor_coordinates(i, j, direction):
         lambda x, y: (x, y+1),
     ]
     return func[direction](i, j)
-
-
-def make_terrain_grid(shape, levels):
-    base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
-    noise = np.random.random(shape)
-    terrain = np.cos(base) * 8 - base.T * 3.6 + noise * 7
-    terrain -= terrain.min()
-    terrain = terrain / terrain.max() * 6
-    return np.floor(terrain)
 
 
 class SimpleWaterGrid(DrawableABC):
@@ -52,7 +36,7 @@ class SimpleWaterGrid(DrawableABC):
         self.water_levels = water_levels
         self.water_grid = np.zeros(self.shape)
         self.terrain_levels = terrain_levels
-        self.terrain_grid = make_terrain_grid(self.shape, self.terrain_levels)
+        self.terrain_grid = generate_terrain(self.shape, self.terrain_levels)
 
         self.water_grid[3, 5] = 0
 
