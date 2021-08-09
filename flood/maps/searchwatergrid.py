@@ -26,7 +26,7 @@ def get_neighbor_coordinates(i, j, direction):
 def make_terrain_grid(shape, levels):
     base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
     noise = np.random.random(shape)
-    terrain = np.sin(base) * 8 - np.cos(base).T * 3.6 + noise * 7
+    terrain = np.sin(base) * 8 - np.cos(base).T * 3.6 + noise * 2
     terrain -= terrain.min()
     terrain = terrain / terrain.max() * 6
     return np.floor(terrain)
@@ -55,20 +55,35 @@ class SearchWaterGrid(DrawableABC):
         self.terrain_grid: np.ndarray = make_terrain_grid(self.shape, self.terrain_levels)
         self._sources = set()
         self._frontier = []
-        self._frontier_set = set()
+        self._frontier_set = {}
+        self._explored = set()
 
         self.add_source((24, 24))
 
     def add_source(self, coords):
         self._sources.add(coords)
-        self.add_to_frontier(coords, self.water_grid[coords])
+        self.add_to_frontier(coords, self.water_grid[coords] + self.terrain_grid[coords])
 
     def add_to_frontier(self, coords, level):
+        if (level, coords) in self._explored:
+            return
         if (level, coords) in self._frontier_set:
+            self._frontier_set[(level, coords)] += 1
+            if self._frontier_set[(level, coords)] > 2:
+                # prioritize
+                # FIXME: this is not working
+                heapq.heappush(
+                    self._frontier,
+                    [
+                        level,
+                        0.01*np.random.random(),
+                        coords
+                    ]
+                )
             return
         if level in (np.nan, None):
             raise ValueError(f"Invalida value: {level}")
-        self._frontier_set.add((level, coords))
+        self._frontier_set[(level, coords)] = 0
 
         heapq.heappush(
             self._frontier,
@@ -81,8 +96,8 @@ class SearchWaterGrid(DrawableABC):
 
     def frontier_pop(self):
         level, _, coords = heapq.heappop(self._frontier)
-        self._frontier_set.remove((level, coords))
-        return coords
+        self._explored.add((coords, level))
+        return coords, level
 
     def step_update(self, r):
         for _ in range(5):
@@ -90,16 +105,20 @@ class SearchWaterGrid(DrawableABC):
 
     def water_step(self):
         try:
-            coords = self.frontier_pop()
+            coords, frontier_level = self.frontier_pop()
         except IndexError:
             # New source?
             return
 
+        this_level = self.water_grid[coords] + self.terrain_grid[coords]
+        if this_level != frontier_level:
+            # Old entry
+            return
+
         self.water_grid[coords] += 1
+        this_level += 1
         if coords in self._sources:
             self.add_to_frontier(coords, self.water_grid[coords])
-
-        this_level = self.water_grid[coords] + self.terrain_grid[coords]
 
         # add neighbors
         for neighbor in [
