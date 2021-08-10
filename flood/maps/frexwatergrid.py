@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from OpenGL.GL import *
 import heapq
@@ -20,7 +22,7 @@ class FrExWaterGrid(DrawableABC):
         terrain_levels=6,
         scale=8,
         padding=0.1,
-        breadth_first_factor=0.1,
+        breadth_first_factor=0.05,
         terrain_preset="perlin"
     ):
         assert len(shape) == 2
@@ -30,6 +32,7 @@ class FrExWaterGrid(DrawableABC):
         self.padding = padding
         self.color_ground = np.array((0.5, 0.45, 0.45))
         self.color_water = np.array((0.2, 0.3, 1))
+        self.color_wave = np.array((1, 1, 1))
         self.shape = shape
         self.water_levels: int = water_levels
         self.water_grid: np.ndarray = np.zeros(self.shape)
@@ -54,20 +57,23 @@ class FrExWaterGrid(DrawableABC):
             raise ValueError(f"Invalid value: {level}")
         self._frontier_set.add((level, coords))
 
+        # Lower value = higher priority
+        queue_value = level * (1 + np.random.random() * np.log(delay+1))
+
         heapq.heappush(
             self._frontier,
             [
+                queue_value,
                 level,
-                np.random.random() + delay,
                 coords
             ]
         )
 
     def frontier_pop(self):
-        level, _, coords = heapq.heappop(self._frontier)
+        _, level, coords = heapq.heappop(self._frontier)
         self._frontier_set.remove((level, coords))
         while (coords, level) in self._explored:
-            level, _, coords = heapq.heappop(self._frontier)
+            _, level, coords = heapq.heappop(self._frontier)
             self._frontier_set.remove((level, coords))
         self._explored.add((coords, level))
         return coords, level
@@ -78,6 +84,7 @@ class FrExWaterGrid(DrawableABC):
 
     def water_step(self, r):
         priority = r * self.breadth_first_factor
+        # priority = math.log(r * self.breadth_first_factor)
         try:
             coords, frontier_level = self.frontier_pop()
         except IndexError:
@@ -114,10 +121,18 @@ class FrExWaterGrid(DrawableABC):
 
     def draw(self, t):
         glPolygonMode(GL_FRONT, GL_FILL)
+        # glLineWidth(0.1)
         for (i, j) in np.ndindex(self.shape):
-            if self.water_grid[i, j] > 0:
-                padding = 0
+            padding = 0
+            water = False
+            if (i, j) in self._sources:
+                glColor3f(1., 1., 1.)
+            elif self.water_grid[i, j] > 0:
+                water = True
                 water_level = (self.water_grid[i, j]-1)/self.water_levels
+                absolute_level = (
+                    self.terrain_grid[i, j] + self.water_grid[i, j]-1
+                )/(self.terrain_levels + 2)  # water shouldn't rise above max_terrain+2
                 glColor3f(*(self.color_water[:2] * (1-water_level)), np.cos(water_level * np.pi/2))
             else:
                 padding = self.padding
@@ -132,6 +147,15 @@ class FrExWaterGrid(DrawableABC):
             glVertex2fv((1-padding, 1-padding))
             glVertex2fv((padding, 1-padding))
             glEnd()
+
+            if water:
+                glColor3f(*(self.color_wave * absolute_level))
+                glBegin(GL_LINES)
+                glVertex2fv((0, 0.35))
+                glVertex2fv((0.7, 0.15))
+                glVertex2fv((0.3, 0.85))
+                glVertex2fv((1, 0.65))
+                glEnd()
 
             glPopMatrix()
 
@@ -149,10 +173,10 @@ if __name__ == "__main__":
     grid = FrExWaterGrid(
         shape=(64, 64),
         water_levels=4,
-        terrain_levels=4,
+        terrain_levels=8,
         scale=8,
         padding=0.1,
-        terrain_preset="perlin4"
+        terrain_preset="perlin"
     )
     grid.add_source((10, 20))
     grid.add_source((30, 30))

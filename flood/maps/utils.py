@@ -1,6 +1,7 @@
 import numpy as np
 from perlin_noise import PerlinNoise
 from pyperlin import FractalPerlin2D
+# TODO: custom perlin implementation using only numpy
 
 
 def generate_terrain(shape, levels, preset="perlin"):
