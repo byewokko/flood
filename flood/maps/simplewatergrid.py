@@ -3,7 +3,7 @@ from OpenGL.GL import *
 from flood.abc.drawable import DrawableABC
 import heapq
 
-from utils import generate_terrain
+from .utils import generate_terrain
 
 
 def get_neighbor_coordinates(i, j, direction):

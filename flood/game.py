@@ -4,8 +4,8 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from .maps import CellularWaterGrid
-from .maps import FrExWaterGrid
+from . import maps
+from . import renderer
 
 
 class Game:
@@ -17,6 +17,7 @@ class Game:
         self.map_size = (self.Config["map"]["width"], self.Config["map"]["height"])
         self.frame_rate = self.Config["frame rate"]
         self.display_compensation = (1, 1, 1)
+        self.round = 0
         self.running = False
 
         self.Clock = pg.time.Clock()
@@ -38,32 +39,37 @@ class Game:
             self.display_compensation = (1, self.display_size[0]/self.display_size[1], 1)
 
     def initialize_objects(self):
-        # self.grid = SimpleWaterGrid(
-        self.grid = FrExWaterGrid(
-            self.map_size,
-            # terrain_levels=6,
-            # water_levels=12,
-            # scale=8,
-            # padding=0.2
+        self.renderer = renderer.Renderer()
+        self.grid = maps.FrExWaterGrid(
+            shape=self.map_size,
+            depth_first_factor=5
         )
+        terrain = maps.generate_terrain(
+            shape=self.map_size,
+            levels=8,
+            preset="perlin4",
+            cave=0.4,
+            extra_cave=0.3
+        )
+        self.grid.set_terrain(terrain)
+        self.grid.add_source((10, 20))
+        self.grid.add_source((30, 30))
 
     def run(self):
         """
         Execute the game loop
         """
-        round = 0
         last_update = 0
         self.running = True
         while self.running:
             t = pg.time.get_ticks() / 1000
             if t - last_update > 0.1:
                 last_update = t
-                round += 1
-                self.grid.step_update(round)
+                self.step_update(t)
 
             self.get_inputs(t)
 
-            self.update(t)
+            self.continuous_update(t)
 
             self.draw(t)
 
@@ -78,8 +84,12 @@ class Game:
                 self.running = False
                 return
 
-    def update(self, t):
+    def continuous_update(self, t):
         self.grid.continuous_update(t)
+
+    def step_update(self, t):
+        self.round += 1
+        self.grid.step_update(self.round, n_steps=5)
 
     def draw(self, t):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -93,7 +103,7 @@ class Game:
         # Compensate display ratio distortion
         glScale(*self.display_compensation)
 
-        self.grid.draw(t)
+        self.grid.draw(t, self.renderer)
 
         glPopMatrix()
         pg.display.flip()

@@ -6,7 +6,7 @@ import heapq
 
 from flood.abc.drawable import DrawableABC
 from flood.renderer import Renderer
-from utils import generate_terrain
+from .utils import generate_terrain
 
 
 class FrExWaterGrid(DrawableABC):

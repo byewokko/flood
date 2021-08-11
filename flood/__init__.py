@@ -1,5 +1,9 @@
 from .game import Game
+from . import maps
+from . import renderer
 
 __all__ = [
-    "Game"
+    "Game",
+    "maps",
+    "renderer"
 ]

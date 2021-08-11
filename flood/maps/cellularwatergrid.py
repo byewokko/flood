@@ -3,7 +3,7 @@ import numpy as np
 from OpenGL.GL import *
 
 from flood.abc.drawable import DrawableABC
-from utils import generate_terrain
+from .utils import generate_terrain
 
 
 class Cell(DrawableABC):
