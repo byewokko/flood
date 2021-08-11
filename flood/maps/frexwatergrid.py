@@ -19,11 +19,9 @@ class FrExWaterGrid(DrawableABC):
         self,
         shape,
         water_levels=4,
-        terrain_levels=6,
         scale=8,
         padding=0.1,
-        breadth_first_factor=0.05,
-        terrain_preset="perlin"
+        depth_first_factor=1
     ):
         assert len(shape) == 2
         assert shape[0] > 1
@@ -31,18 +29,24 @@ class FrExWaterGrid(DrawableABC):
         self.scale = scale
         self.padding = padding
         self.color_ground = np.array((0.5, 0.45, 0.45))
-        self.color_water = np.array((0.2, 0.3, 1))
-        self.color_wave = np.array((1, 1, 1))
+        self.color_water = np.array((0.3, 0.4, 1))
+        self.color_wave = np.array((0.7, 0.7, 1))
         self.shape = shape
         self.water_levels: int = water_levels
         self.water_grid: np.ndarray = np.zeros(self.shape)
-        self.terrain_levels: int = terrain_levels
-        self.terrain_grid: np.ndarray = generate_terrain(self.shape, self.terrain_levels, terrain_preset)
-        self.breadth_first_factor = breadth_first_factor
+        self.terrain_levels: int = 1
+        self.terrain_grid: np.ndarray = np.zeros(self.shape)
+        self.depth_first_factor = depth_first_factor
+        self.total_steps = 0
         self._sources = set()
         self._frontier = []
         self._frontier_set = set()
         self._explored = set()
+
+    def set_terrain(self, terrain):
+        assert terrain.shape == self.shape
+        self.terrain_grid = terrain
+        self.terrain_levels = int(np.nanmax(terrain) - np.nanmin(terrain)) + 1
 
     def add_source(self, coords):
         self._sources.add(coords)
@@ -58,7 +62,8 @@ class FrExWaterGrid(DrawableABC):
         self._frontier_set.add((level, coords))
 
         # Lower value = higher priority
-        queue_value = level * (1 + np.random.random() * np.log(delay+1))
+        queue_value = level * (self.depth_first_factor + np.random.random() * delay)
+
 
         heapq.heappush(
             self._frontier,
@@ -81,22 +86,28 @@ class FrExWaterGrid(DrawableABC):
     def step_update(self, r, n_steps=1):
         for _ in range(n_steps):
             self.water_step(r)
+        if r % 50 == 0:
+            print(f"Round {r}, Water updates: {self.total_steps}")
 
     def water_step(self, r):
-        priority = r * self.breadth_first_factor
-        # priority = math.log(r * self.breadth_first_factor)
-        try:
-            coords, frontier_level = self.frontier_pop()
-        except IndexError:
-            # New source?
-            print(f"index error: frontier_pop")
-            return
+        self.total_steps += 1
+        priority = r
+        coords = None
+        while coords is None:
+            try:
+                coords, frontier_level = self.frontier_pop()
+            except IndexError:
+                # New source?
+                print(f"index error: frontier_pop")
+                coords = None
 
-        this_level = self.water_grid[coords] + self.terrain_grid[coords]
+            this_level = self.water_grid[coords] + self.terrain_grid[coords]
+            if np.isnan(this_level):
+                coords = None
 
         self.water_grid[coords] += 1
         this_level += 1
-        if coords in self._sources:
+        if coords in self._sources and this_level < self.terrain_levels+2:  # water shouldn't rise above max_terrain+2
             self.add_to_frontier(coords, this_level+1, priority)
 
         # add neighbors
@@ -109,12 +120,13 @@ class FrExWaterGrid(DrawableABC):
             if not ((0 <= neighbor[0] < self.shape[0]) and (0 <= neighbor[1] < self.shape[1])):
                 continue
             neighbor_level = self.water_grid[neighbor] + self.terrain_grid[neighbor]
-            if neighbor_level is np.nan:
+            if np.isnan(neighbor_level):
                 continue
             difference = this_level - neighbor_level
             # TODO: prioritize expansion down steep slopes
+            neighbor_priority = -1 if difference > 1 else priority
             for i in range(int(difference)):
-                self.add_to_frontier(neighbor, neighbor_level+i, priority)
+                self.add_to_frontier(neighbor, neighbor_level+i, neighbor_priority)
 
     def continuous_update(self, t):
         pass
@@ -125,14 +137,13 @@ class FrExWaterGrid(DrawableABC):
         for (i, j) in np.ndindex(self.shape):
             padding = 0
             water = False
+            if np.isnan(self.terrain_grid[i, j]):
+                continue
             if (i, j) in self._sources:
-                glColor3f(1., 1., 1.)
+                glColor3f(.6, .6, 1.)
             elif self.water_grid[i, j] > 0:
                 water = True
-                water_level = (self.water_grid[i, j]-1)/self.water_levels
-                absolute_level = (
-                    self.terrain_grid[i, j] + self.water_grid[i, j]-1
-                )/(self.terrain_levels + 2)  # water shouldn't rise above max_terrain+2
+                water_level = (self.water_grid[i, j] - 1)/self.water_levels
                 glColor3f(*(self.color_water[:2] * (1-water_level)), np.cos(water_level * np.pi/2))
             else:
                 padding = self.padding
@@ -149,6 +160,9 @@ class FrExWaterGrid(DrawableABC):
             glEnd()
 
             if water:
+                absolute_level = (
+                    self.terrain_grid[i, j] + self.water_grid[i, j] - 1
+                ) / (self.terrain_levels + 2)  # water shouldn't rise above max_terrain+2
                 glColor3f(*(self.color_wave * absolute_level))
                 glBegin(GL_LINES)
                 glVertex2fv((0, 0.35))
@@ -170,14 +184,22 @@ if __name__ == "__main__":
     pg.init()
     pg.display.set_mode(window_size, pg.DOUBLEBUF | pg.OPENGL)
     clock = pg.time.Clock()
+    shape = (64, 64)
     grid = FrExWaterGrid(
-        shape=(64, 64),
+        shape=shape,
         water_levels=4,
-        terrain_levels=8,
         scale=8,
         padding=0.1,
-        terrain_preset="perlin"
+        depth_first_factor=5
     )
+    terrain = generate_terrain(
+        shape=shape,
+        levels=8,
+        preset="perlin",
+        cave=0.4,
+        extra_cave=0.3
+    )
+    grid.set_terrain(terrain)
     grid.add_source((10, 20))
     grid.add_source((30, 30))
 

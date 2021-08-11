@@ -4,7 +4,7 @@ from pyperlin import FractalPerlin2D
 # TODO: custom perlin implementation using only numpy
 
 
-def generate_terrain(shape, levels, preset="perlin"):
+def generate_terrain(shape, levels, preset="perlin", cave=None, extra_cave=None):
     normalize = True
     if preset == "bumps":
         base = np.tile(np.linspace(0, 2*np.pi, num=shape[0]), (shape[1], 1))
@@ -65,6 +65,20 @@ def generate_terrain(shape, levels, preset="perlin"):
 
     if normalize:
         terrain -= terrain.min()
-        terrain = terrain / terrain.max() * levels
+        terrain = terrain / terrain.max()
+        if cave:
+            terrain[terrain > (1 - cave)] = np.nan
+        terrain = terrain / np.nanmax(terrain) * levels
         terrain = np.floor(terrain)
+    if extra_cave:
+        noise_gen = PerlinNoise(octaves=8)
+        cave_profile = np.reshape([
+            noise_gen([x / shape[0], y / shape[1]])
+            for (x, y)
+            in np.ndindex(shape)
+        ], shape)
+        cave_profile -= cave_profile.min()
+        cave_profile = cave_profile / cave_profile.max()
+        terrain[cave_profile > (1 - extra_cave)] = np.nan
+
     return terrain
