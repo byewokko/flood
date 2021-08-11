@@ -43,44 +43,7 @@ class Ground(Sprite):
 
 
 class Water(Sprite):
-    color_water = np.array((0.3, 0.4, 1))
-    color_wave = np.array((0.7, 0.7, 1))
-    tile_vertices = [
-        (0, 0),
-        (1, 0),
-        (1, 1),
-        (0, 1)
-    ]
-    wave_vertices = [
-        (0, 0.35),
-        (0.7, 0.15),
-        (0.3, 0.85),
-        (1, 0.65)
-    ]
-
-    @classmethod
-    def configure(cls, padding=None):
-        if padding is not None:
-            cls.padding = padding
-
-    @classmethod
-    def draw(cls, *, water_level, total_level):
-        glPolygonMode(GL_FRONT, GL_FILL)
-        # glColor3f(*(cls.color_water * water_level / cls.terrain_range))
-        glColor3f(*(cls.color_water[:2] * (1 - water_level)), np.cos(water_level * np.pi / 2))
-        glBegin(GL_QUADS)
-        for pair in cls.tile_vertices:
-            glVertex2fv(pair)
-        glEnd()
-        glColor3f(*(cls.color_wave * total_level))
-        glBegin(GL_LINES)
-        for pair in cls.wave_vertices:
-            glVertex2fv(pair)
-        glEnd()
-
-
-class WaterSource(Sprite):
-    color = np.array((.6, .6, 1.))
+    color = np.array((0.3, 0.4, 1))
     vertices = [
         (0, 0),
         (1, 0),
@@ -89,9 +52,43 @@ class WaterSource(Sprite):
     ]
 
     @classmethod
-    def configure(cls, padding=None):
-        if padding is not None:
-            cls.padding = padding
+    def draw(cls, *, water_level):
+        glPolygonMode(GL_FRONT, GL_FILL)
+        # glColor3f(*(cls.color_water * water_level / cls.terrain_range))
+        glColor3f(*(cls.color[:2] * (1 - water_level)), np.cos(water_level * np.pi / 2))
+        glBegin(GL_QUADS)
+        for pair in cls.vertices:
+            glVertex2fv(pair)
+        glEnd()
+
+
+class Wave(Sprite):
+    color = np.array((0.7, 0.7, 1))
+    vertices = [
+        (0, 0.35),
+        (0.7, 0.15),
+        (0.3, 0.85),
+        (1, 0.65)
+    ]
+
+    @classmethod
+    def draw(cls, *, total_level):
+        glPolygonMode(GL_FRONT, GL_FILL)
+        glColor3f(*(cls.color * total_level))
+        glBegin(GL_LINES)
+        for pair in cls.vertices:
+            glVertex2fv(pair)
+        glEnd()
+
+
+class WaterSource(Sprite):
+    color = np.array((.6, .6, 1.))
+    vertices = [
+        (0., 0.),
+        (0.5, 0.3),
+        (1.0, 0.),
+        (0.5, 1.0),
+    ]
 
     @classmethod
     def draw(cls):
@@ -109,6 +106,7 @@ class Renderer:
         self.objects = {
             "ground": Ground,
             "water": Water,
+            "water_wave": Wave,
             "water_source": WaterSource,
         }
 

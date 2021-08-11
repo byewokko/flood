@@ -135,14 +135,16 @@ class FrExWaterGrid(DrawableABC):
             if np.isnan(self.terrain_grid[i, j]):
                 continue
             if (i, j) in self._sources:
+                water_level = (self.water_grid[i, j] - 1)/self.water_levels
+                renderer.draw(t, (i, j), "water", water_level=water_level)
                 renderer.draw(t, (i, j), "water_source")
             elif self.water_grid[i, j] > 0:
-                water = True
                 water_level = (self.water_grid[i, j] - 1)/self.water_levels
                 total_level = (
                     self.terrain_grid[i, j] + self.water_grid[i, j] - 1
                 ) / (self.terrain_levels + 2)  # water shouldn't rise above max_terrain+2
-                renderer.draw(t, (i, j), "water", water_level=water_level, total_level=total_level)
+                renderer.draw(t, (i, j), "water", water_level=water_level)
+                renderer.draw(t, (i, j), "water_wave", total_level=total_level)
             else:
                 terrain_level = (self.terrain_grid[i, j] - 1)/self.terrain_levels
                 renderer.draw(t, (i, j), "ground", terrain_level=terrain_level)
