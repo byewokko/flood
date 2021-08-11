@@ -47,7 +47,7 @@ class Game:
         terrain = maps.generate_terrain(
             shape=self.map_size,
             levels=8,
-            preset="perlin4",
+            preset="perlin",
             cave=0.4,
             extra_cave=0.3
         )

@@ -1,10 +1,11 @@
 display:
-  width: 800
-  height: 640
+  # 3/4 of mobile screen resolution
+  width: 1440
+  height: 810
 view:
-  width: 320
-  height: 320
+  width: 455
+  height: 455
 map:
-  width: 64
+  width: 80
   height: 64
 frame rate: 40
