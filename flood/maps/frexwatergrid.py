@@ -5,6 +5,7 @@ from OpenGL.GL import *
 import heapq
 
 from flood.abc.drawable import DrawableABC
+from flood.renderer import Renderer
 from utils import generate_terrain
 
 
@@ -18,21 +19,16 @@ class FrExWaterGrid(DrawableABC):
     def __init__(
         self,
         shape,
-        water_levels=4,
-        scale=8,
-        padding=0.1,
         depth_first_factor=1
     ):
         assert len(shape) == 2
         assert shape[0] > 1
         assert shape[1] > 1
-        self.scale = scale
-        self.padding = padding
         self.color_ground = np.array((0.5, 0.45, 0.45))
         self.color_water = np.array((0.3, 0.4, 1))
         self.color_wave = np.array((0.7, 0.7, 1))
         self.shape = shape
-        self.water_levels: int = water_levels
+        self.water_levels: int = 1
         self.water_grid: np.ndarray = np.zeros(self.shape)
         self.terrain_levels: int = 1
         self.terrain_grid: np.ndarray = np.zeros(self.shape)
@@ -47,6 +43,7 @@ class FrExWaterGrid(DrawableABC):
         assert terrain.shape == self.shape
         self.terrain_grid = terrain
         self.terrain_levels = int(np.nanmax(terrain) - np.nanmin(terrain)) + 1
+        self.water_levels = self.terrain_levels + 2
 
     def add_source(self, coords):
         self._sources.add(coords)
@@ -97,9 +94,9 @@ class FrExWaterGrid(DrawableABC):
             try:
                 coords, frontier_level = self.frontier_pop()
             except IndexError:
-                # New source?
-                print(f"index error: frontier_pop")
+                print(f"index error: frontier is empty")
                 coords = None
+                return
 
             this_level = self.water_grid[coords] + self.terrain_grid[coords]
             if np.isnan(this_level):
@@ -131,47 +128,24 @@ class FrExWaterGrid(DrawableABC):
     def continuous_update(self, t):
         pass
 
-    def draw(self, t):
+    def draw(self, t, renderer):
         glPolygonMode(GL_FRONT, GL_FILL)
         # glLineWidth(0.1)
         for (i, j) in np.ndindex(self.shape):
-            padding = 0
-            water = False
             if np.isnan(self.terrain_grid[i, j]):
                 continue
             if (i, j) in self._sources:
-                glColor3f(.6, .6, 1.)
+                renderer.draw(t, (i, j), "water_source")
             elif self.water_grid[i, j] > 0:
                 water = True
                 water_level = (self.water_grid[i, j] - 1)/self.water_levels
-                glColor3f(*(self.color_water[:2] * (1-water_level)), np.cos(water_level * np.pi/2))
-            else:
-                padding = self.padding
-                glColor3f(*(self.color_ground * self.terrain_grid[i, j]/self.terrain_levels))
-            glPushMatrix()
-            glScale(self.scale, self.scale, 1)
-            glTranslate(i, j, 0)
-
-            glBegin(GL_QUADS)
-            glVertex2fv((padding, padding))
-            glVertex2fv((1-padding, padding))
-            glVertex2fv((1-padding, 1-padding))
-            glVertex2fv((padding, 1-padding))
-            glEnd()
-
-            if water:
-                absolute_level = (
+                total_level = (
                     self.terrain_grid[i, j] + self.water_grid[i, j] - 1
                 ) / (self.terrain_levels + 2)  # water shouldn't rise above max_terrain+2
-                glColor3f(*(self.color_wave * absolute_level))
-                glBegin(GL_LINES)
-                glVertex2fv((0, 0.35))
-                glVertex2fv((0.7, 0.15))
-                glVertex2fv((0.3, 0.85))
-                glVertex2fv((1, 0.65))
-                glEnd()
-
-            glPopMatrix()
+                renderer.draw(t, (i, j), "water", water_level=water_level, total_level=total_level)
+            else:
+                terrain_level = (self.terrain_grid[i, j] - 1)/self.terrain_levels
+                renderer.draw(t, (i, j), "ground", terrain_level=terrain_level)
 
 
 if __name__ == "__main__":
@@ -184,12 +158,10 @@ if __name__ == "__main__":
     pg.init()
     pg.display.set_mode(window_size, pg.DOUBLEBUF | pg.OPENGL)
     clock = pg.time.Clock()
+    renderer = Renderer()
     shape = (64, 64)
     grid = FrExWaterGrid(
         shape=shape,
-        water_levels=4,
-        scale=8,
-        padding=0.1,
         depth_first_factor=5
     )
     terrain = generate_terrain(
@@ -228,7 +200,7 @@ if __name__ == "__main__":
         # Compensate display ratio distortion
         glScale(*display_compensation)
 
-        grid.draw(t)
+        grid.draw(t, renderer)
 
         glPopMatrix()
         pg.display.flip()
