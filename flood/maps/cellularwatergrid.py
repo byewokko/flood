@@ -113,7 +113,7 @@ class Cell(EntityABC, DrawableABC):
         self.given_water += water_share
 
 
-    def step_update(self, r, inputs=None, **kwargs):
+    def step_update(self, r, events, **kwargs):
         self.water_level += sum(self.received_water) - self.given_water
         self.flow = np.array((
             self.received_water[0] - self.received_water[2],
@@ -125,7 +125,7 @@ class Cell(EntityABC, DrawableABC):
         self.received_water = [0, 0, 0, 0]
         self.given_water = 0
 
-    def continuous_update(self, t, inputs=None, **kwargs):
+    def continuous_update(self, t, events, **kwargs):
         pass
 
     def draw(self, t, renderer, **kwargs):

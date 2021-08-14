@@ -1,11 +1,15 @@
-from flood.abc import DrawableABC
+from ..abc import DrawableABC
+from .abc import EntityABC
 
 
-class Player(DrawableABC):
-    def step_update(self, r, inputs=None, **kwargs):
+class Player(EntityABC, DrawableABC):
+    def __init__(self):
         pass
 
-    def continuous_update(self, t, inputs=None, **kwargs):
+    def step_update(self, r, events, **kwargs):
+        pass
+
+    def continuous_update(self, t, events, **kwargs):
         pass
 
     def draw(self, t, renderer, **kwargs):

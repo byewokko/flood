@@ -81,7 +81,8 @@ class FrExWaterGrid(EntityABC, DrawableABC):
         self._explored.add((coords, level))
         return coords, level
 
-    def step_update(self, r, inputs=None, n_steps=1, **kwargs):
+    def step_update(self, r, events, **kwargs):
+        n_steps = 5
         for _ in range(n_steps):
             self.water_step(r)
         if r % 50 == 0:
@@ -126,7 +127,7 @@ class FrExWaterGrid(EntityABC, DrawableABC):
             for i in range(int(difference)):
                 self.add_to_frontier(neighbor, neighbor_level+i, neighbor_priority)
 
-    def continuous_update(self, t, inputs=None, **kwargs):
+    def continuous_update(self, t, events, **kwargs):
         pass
 
     def draw(self, t, renderer: Renderer, **kwargs):

@@ -3,19 +3,19 @@ import abc
 
 class EntityABC(abc.ABC):
     @abc.abstractmethod
-    def step_update(self, r, inputs=None, **kwargs):
+    def step_update(self, r, events, **kwargs):
         """
         Turn-based update
-        :param inputs:
+        :param events:
         :param r: Round number
         """
         pass
 
     @abc.abstractmethod
-    def continuous_update(self, t, inputs=None, **kwargs):
+    def continuous_update(self, t, events, **kwargs):
         """
         Time-based update (animation and transitions)
-        :param inputs:
+        :param events:
         :param t: Current time in seconds
         :return:
         """

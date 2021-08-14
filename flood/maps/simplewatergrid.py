@@ -43,7 +43,7 @@ class SimpleWaterGrid(EntityABC, DrawableABC):
         self.water_grid[3, 5] = 0
 
 
-    def step_update(self, r, inputs=None, **kwargs):
+    def step_update(self, r, events, **kwargs):
         self.water_step()
 
     def water_step(self):
@@ -76,7 +76,7 @@ class SimpleWaterGrid(EntityABC, DrawableABC):
         self.water_grid = new_grid
         print(f"Total water: {np.sum(self.water_grid)}")
 
-    def continuous_update(self, t, inputs=None, **kwargs):
+    def continuous_update(self, t, events, **kwargs):
         pass
 
     def draw(self, t, renderer, **kwargs):
