@@ -73,7 +73,10 @@ class Game:
             events = self.controller.get_events()
             self.process_events(events)
 
-            if self.autoplay and t - last_update > 0.1:
+            if len(events) > 0:
+                last_update = t
+                self.step_update(t, events)
+            elif self.autoplay and t - last_update > 0.1:
                 last_update = t
                 self.step_update(t, events)
 
@@ -82,15 +85,6 @@ class Game:
             self.draw(t)
 
             self.Clock.tick(self.frame_rate)
-
-    def get_inputs(self, t):
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                self.running = False
-                return
-            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                self.running = False
-                return
 
     def continuous_update(self, t):
         self.grid.continuous_update(t, None)
@@ -125,3 +119,9 @@ class Game:
         if GameEvent["game.autoplay"] in events:
             events.remove(GameEvent["game.autoplay"])
             self.autoplay = ~self.autoplay
+        if GameEvent["game.command"] in events:
+            events.remove(GameEvent["game.command"])
+            self.get_command_input()
+
+    def get_command_input(self):
+        command = input(";;; ")
