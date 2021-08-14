@@ -44,6 +44,25 @@ class Ground(SpriteABC):
         glEnd()
 
 
+class Player(SpriteABC):
+    color = np.array((1, 1, 1))
+    vertices = [
+        (0.5, 0),
+        (1, 0.5),
+        (0.5, 1),
+        (0, 0.5)
+    ]
+
+    @classmethod
+    def draw(cls):
+        glPolygonMode(GL_FRONT, GL_FILL)
+        glColor3f(*cls.color)
+        glBegin(GL_QUADS)
+        for pair in cls.vertices:
+            glVertex2fv(pair)
+        glEnd()
+
+
 class Water(SpriteABC):
     color = np.array((0.3, 0.4, 1))
     vertices = [
@@ -110,6 +129,7 @@ class Renderer:
             "water": Water,
             "water_wave": Wave,
             "water_source": WaterSource,
+            "player": Player,
         }
 
     def draw(self, t, coords, what, **kwargs):

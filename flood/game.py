@@ -65,7 +65,7 @@ class Game:
         """
         last_update = 0
         self.running = True
-        self.waiting_for_input = True
+        self.waiting_for_player_input = True
         self.autoplay = False
         while self.running:
             t = pg.time.get_ticks() / 1000
@@ -97,6 +97,7 @@ class Game:
 
     def step_update(self, t, events):
         self.round += 1
+        self.player.step_update(self.round, events)
         self.grid.step_update(self.round, None)
 
     def draw(self, t):
@@ -112,6 +113,7 @@ class Game:
         glScale(*self.display_compensation)
 
         self.grid.draw(t, self.renderer)
+        self.player.draw(t, self.renderer)
 
         glPopMatrix()
         pg.display.flip()
