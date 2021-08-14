@@ -4,6 +4,7 @@ from flood.abc.drawable import DrawableABC
 import heapq
 
 from .utils import generate_terrain
+from ..entities.abc import EntityABC
 
 
 def get_neighbor_coordinates(i, j, direction):
@@ -16,7 +17,7 @@ def get_neighbor_coordinates(i, j, direction):
     return func[direction](i, j)
 
 
-class SimpleWaterGrid(DrawableABC):
+class SimpleWaterGrid(EntityABC, DrawableABC):
     def __init__(
         self,
         shape,
@@ -25,6 +26,7 @@ class SimpleWaterGrid(DrawableABC):
         scale=8,
         padding=0.2
     ):
+        raise NotImplementedError("Deprecated.")
         assert len(shape) == 2
         assert shape[0] > 1
         assert shape[1] > 1
@@ -41,7 +43,7 @@ class SimpleWaterGrid(DrawableABC):
         self.water_grid[3, 5] = 0
 
 
-    def step_update(self, r):
+    def step_update(self, r, inputs=None, **kwargs):
         self.water_step()
 
     def water_step(self):
@@ -74,10 +76,10 @@ class SimpleWaterGrid(DrawableABC):
         self.water_grid = new_grid
         print(f"Total water: {np.sum(self.water_grid)}")
 
-    def continuous_update(self, t):
+    def continuous_update(self, t, inputs=None, **kwargs):
         pass
 
-    def draw(self, t):
+    def draw(self, t, renderer, **kwargs):
         glPolygonMode(GL_FRONT, GL_FILL)
         for (i, j) in np.ndindex(self.shape):
             if self.water_grid[i, j] > 0:

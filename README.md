@@ -29,4 +29,4 @@ Turn-based procedurally generated cave explorer game
 - Status effects: wet, cold, fatigued, hungry. Campfire to heal status effects.
 - Plants and fungi.
 - Skills: water intuition (predict where water expands), botanist intuition, mycologist intuition, hunter intuition...
-- Biomes.
+- Biomes?

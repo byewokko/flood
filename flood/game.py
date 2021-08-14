@@ -4,7 +4,7 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from . import maps
+from . import maps, entities
 from . import renderer
 
 
@@ -54,6 +54,8 @@ class Game:
         self.grid.set_terrain(terrain)
         self.grid.add_source((10, 20))
         self.grid.add_source((30, 30))
+        self.player = entities.Player()
+        self.player.set_coords((5, 5))
 
     def run(self):
         """
@@ -63,11 +65,12 @@ class Game:
         self.running = True
         while self.running:
             t = pg.time.get_ticks() / 1000
+
+            self.get_inputs(t)
+
             if t - last_update > 0.1:
                 last_update = t
                 self.step_update(t)
-
-            self.get_inputs(t)
 
             self.continuous_update(t)
 
@@ -89,7 +92,7 @@ class Game:
 
     def step_update(self, t):
         self.round += 1
-        self.grid.step_update(self.round, n_steps=5)
+        self.grid.step_update(self.round)
 
     def draw(self, t):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)

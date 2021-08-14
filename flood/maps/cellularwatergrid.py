@@ -4,9 +4,10 @@ from OpenGL.GL import *
 
 from flood.abc.drawable import DrawableABC
 from .utils import generate_terrain
+from ..entities.abc import EntityABC
 
 
-class Cell(DrawableABC):
+class Cell(EntityABC, DrawableABC):
     neighbor_vectors = np.array((
         (0, 1),   # RIGHT
         (-1, 0),  # UP
@@ -15,6 +16,7 @@ class Cell(DrawableABC):
     ))
 
     def __init__(self, grid, coords, terrain_level, water_level):
+        raise NotImplementedError("Deprecated.")
         self.grid = grid
         self.coords = coords
         self.terrain_level = terrain_level
@@ -111,7 +113,7 @@ class Cell(DrawableABC):
         self.given_water += water_share
 
 
-    def step_update(self, r):
+    def step_update(self, r, inputs=None, **kwargs):
         self.water_level += sum(self.received_water) - self.given_water
         self.flow = np.array((
             self.received_water[0] - self.received_water[2],
@@ -123,10 +125,10 @@ class Cell(DrawableABC):
         self.received_water = [0, 0, 0, 0]
         self.given_water = 0
 
-    def continuous_update(self, t):
+    def continuous_update(self, t, inputs=None, **kwargs):
         pass
 
-    def draw(self, t, color_water, color_terrain, water_levels, terrain_levels):
+    def draw(self, t, renderer, **kwargs):
         # TODO: pass color lambdas
         if self.water_level > 0:
             # draw water
@@ -197,7 +199,7 @@ class CellularWaterGrid(DrawableABC):
 
         return neighbors
 
-    def step_update(self, r):
+    def step_update(self, r, inputs=None, **kwargs):
         # self.grid[24, 23].water_level += 10
         # self.grid[24, 24].water_level += 10
         self.grid[40, 5].water_level += 10
@@ -205,23 +207,17 @@ class CellularWaterGrid(DrawableABC):
         for cell in self.cells:
             cell.calculate_step_update(r)
         for cell in self.cells:
-            cell.step_update(r)
+            cell.step_update(r, None)
 
-    def continuous_update(self, t):
+    def continuous_update(self, t, inputs=None, **kwargs):
         pass
 
-    def draw(self, t):
+    def draw(self, t, renderer, **kwargs):
         glPolygonMode(GL_FRONT, GL_FILL)
         for (i, j) in np.ndindex(self.shape):
             glPushMatrix()
             glScale(self.scale, self.scale, 1)
             glTranslate(i, j, 0)
             cell: Cell = self.grid[i, j]
-            cell.draw(
-                t,
-                self.color_water,
-                self.color_ground,
-                water_levels=self.water_levels,
-                terrain_levels=self.terrain_levels
-            )
+            cell.draw(t, None, water_levels=self.water_levels, terrain_levels=self.terrain_levels)
             glPopMatrix()

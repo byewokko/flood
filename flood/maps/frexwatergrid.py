@@ -4,12 +4,13 @@ import numpy as np
 from OpenGL.GL import *
 import heapq
 
-from flood.abc.drawable import DrawableABC
+from ..abc.drawable import DrawableABC
+from ..entities.abc import EntityABC
 from flood.renderer import Renderer
 from .utils import generate_terrain
 
 
-class FrExWaterGrid(DrawableABC):
+class FrExWaterGrid(EntityABC, DrawableABC):
     """
     Frontier Expansion Water Grid
     ==============================
@@ -80,7 +81,7 @@ class FrExWaterGrid(DrawableABC):
         self._explored.add((coords, level))
         return coords, level
 
-    def step_update(self, r, n_steps=1):
+    def step_update(self, r, inputs=None, n_steps=1, **kwargs):
         for _ in range(n_steps):
             self.water_step(r)
         if r % 50 == 0:
@@ -125,29 +126,30 @@ class FrExWaterGrid(DrawableABC):
             for i in range(int(difference)):
                 self.add_to_frontier(neighbor, neighbor_level+i, neighbor_priority)
 
-    def continuous_update(self, t):
+    def continuous_update(self, t, inputs=None, **kwargs):
         pass
 
-    def draw(self, t, renderer):
+    def draw(self, t, renderer: Renderer, **kwargs):
         glPolygonMode(GL_FRONT, GL_FILL)
         # glLineWidth(0.1)
-        for (i, j) in np.ndindex(self.shape):
+        for coords in np.ndindex(self.shape):
+            (i, j) = coords
             if np.isnan(self.terrain_grid[i, j]):
                 continue
             if (i, j) in self._sources:
                 water_level = (self.water_grid[i, j] - 1)/self.water_levels
-                renderer.draw(t, (i, j), "water", water_level=water_level)
-                renderer.draw(t, (i, j), "water_source")
+                renderer.draw(t, coords, "water", water_level=water_level)
+                renderer.draw(t, coords, "water_source")
             elif self.water_grid[i, j] > 0:
                 water_level = (self.water_grid[i, j] - 1)/self.water_levels
                 total_level = (
                     self.terrain_grid[i, j] + self.water_grid[i, j] - 1
                 ) / (self.terrain_levels + 2)  # water shouldn't rise above max_terrain+2
-                renderer.draw(t, (i, j), "water", water_level=water_level)
-                renderer.draw(t, (i, j), "water_wave", total_level=total_level)
+                renderer.draw(t, coords, "water", water_level=water_level)
+                renderer.draw(t, coords, "water_wave", total_level=total_level)
             else:
                 terrain_level = (self.terrain_grid[i, j] - 1)/self.terrain_levels
-                renderer.draw(t, (i, j), "ground", terrain_level=terrain_level)
+                renderer.draw(t, coords, "ground", terrain_level=terrain_level)
 
 
 if __name__ == "__main__":
@@ -189,7 +191,7 @@ if __name__ == "__main__":
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 stop = True
 
-        grid.step_update(r, n_steps=5)
+        grid.step_update(r, None)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glPushMatrix()
@@ -202,7 +204,7 @@ if __name__ == "__main__":
         # Compensate display ratio distortion
         glScale(*display_compensation)
 
-        grid.draw(t, renderer)
+        grid.draw(t, None)
 
         glPopMatrix()
         pg.display.flip()

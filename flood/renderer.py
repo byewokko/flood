@@ -1,8 +1,10 @@
+import abc
+
 import numpy as np
 from OpenGL.GL import *
 
 
-class Sprite:
+class SpriteABC(abc.ABC):
     terrain_range = None
     water_range = None
 
@@ -17,7 +19,7 @@ class Sprite:
         raise NotImplementedError()
 
 
-class Ground(Sprite):
+class Ground(SpriteABC):
     color = np.array((0.5, 0.45, 0.45))
     padding = 0.1
     vertices = [
@@ -42,7 +44,7 @@ class Ground(Sprite):
         glEnd()
 
 
-class Water(Sprite):
+class Water(SpriteABC):
     color = np.array((0.3, 0.4, 1))
     vertices = [
         (0, 0),
@@ -62,7 +64,7 @@ class Water(Sprite):
         glEnd()
 
 
-class Wave(Sprite):
+class Wave(SpriteABC):
     color = np.array((0.7, 0.7, 1))
     vertices = [
         (0, 0.35),
@@ -81,7 +83,7 @@ class Wave(Sprite):
         glEnd()
 
 
-class WaterSource(Sprite):
+class WaterSource(SpriteABC):
     color = np.array((.6, .6, 1.))
     vertices = [
         (0., 0.),
