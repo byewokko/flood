@@ -4,8 +4,9 @@ import pygame as pg
 
 from OpenGL.GL import *
 
-from . import maps, entities
+from . import maps, entities, controls
 from . import renderer
+from .event import GameEvent
 
 
 class Game:
@@ -39,6 +40,7 @@ class Game:
             self.display_compensation = (1, self.display_size[0]/self.display_size[1], 1)
 
     def initialize_objects(self):
+        self.controller = controls.PyGameKeyboard()
         self.renderer = renderer.Renderer()
         self.grid = maps.FrExWaterGrid(
             shape=self.map_size,
@@ -63,14 +65,17 @@ class Game:
         """
         last_update = 0
         self.running = True
+        self.waiting_for_input = True
+        self.autoplay = False
         while self.running:
             t = pg.time.get_ticks() / 1000
 
-            self.get_inputs(t)
+            events = self.controller.get_events()
+            self.process_events(events)
 
-            if t - last_update > 0.1:
+            if self.autoplay and t - last_update > 0.1:
                 last_update = t
-                self.step_update(t)
+                self.step_update(t, events)
 
             self.continuous_update(t)
 
@@ -88,11 +93,11 @@ class Game:
                 return
 
     def continuous_update(self, t):
-        self.grid.continuous_update(t)
+        self.grid.continuous_update(t, None)
 
-    def step_update(self, t):
+    def step_update(self, t, events):
         self.round += 1
-        self.grid.step_update(self.round)
+        self.grid.step_update(self.round, None)
 
     def draw(self, t):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -110,3 +115,11 @@ class Game:
 
         glPopMatrix()
         pg.display.flip()
+
+    def process_events(self, events):
+        if GameEvent["game.quit"] in events:
+            events.remove(GameEvent["game.quit"])
+            self.running = False
+        if GameEvent["game.autoplay"] in events:
+            events.remove(GameEvent["game.autoplay"])
+            self.autoplay = ~self.autoplay
