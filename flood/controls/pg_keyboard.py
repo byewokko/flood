@@ -14,6 +14,7 @@ class PyGameKeyboard(ControllerABC):
         pg.K_a: GameEvent["player.west"],
         pg.K_s: GameEvent["player.south"],
         pg.K_d: GameEvent["player.east"],
+        pg.K_SPACE: GameEvent["player.wait"],
         pg.K_ESCAPE: GameEvent["game.quit"],
         pg.K_SEMICOLON: GameEvent["game.command"],
         pg.K_1: GameEvent["game.autoplay"],

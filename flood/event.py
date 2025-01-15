@@ -3,6 +3,7 @@ _event_list = [
     "player.south",
     "player.east",
     "player.west",
+    "player.wait",
     "game.quit",
     "game.command",
     "game.autoplay",

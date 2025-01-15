@@ -17,6 +17,8 @@ class Player(EntityABC, DrawableABC):
             self.y += 1
         if GameEvent["player.east"] in events:
             self.x += 1
+        if GameEvent["player.wait"] in events:
+            pass
 
     def continuous_update(self, t, events, **kwargs):
         pass
